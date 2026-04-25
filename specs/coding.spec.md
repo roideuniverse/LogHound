@@ -12,13 +12,12 @@
 
 ## Module structure
 
-The project is a multi-module Gradle project with three layers:
+The project is a multi-module Gradle project. Confirmed modules:
 
-- **core** — data models, input abstraction, parser, storage, ingester, plugin API. No UI dependencies.
-- **plugins/** — each plugin is its own module depending on core. Contains plugin logic and plugin-specific UI.
-- **app** — the desktop application shell. Depends on core and all plugin modules. Contains the window, tab management, theme, and plugin registration.
+- **core-api** — domain module. Interfaces, data models, and the plugin API contract only. No implementations, no UI. Everything else depends on this; this depends on nothing in the project.
+- **app** — DI/wiring layer. Assembles and connects implementations, registers plugins, owns the window shell, tab management, and theme.
 
-The core log viewer is a plugin in the plugins directory, not part of app. The app module is just the shell that wires everything together.
+Where implementations (ingester, parser, storage, input sources, plugins) live is **TBD** — to be decided as the architecture takes shape. New modules are introduced only when real code makes the boundary obvious, not speculatively.
 
 ---
 

@@ -22,9 +22,9 @@ Behavior spec describes *what*. Coding spec describes *how*. They do not overlap
 
 Multi-module Gradle project:
 
-- `core/` — data models, input abstraction, parser, storage, ingester, plugin API. No UI dependencies.
-- `plugins/` — each plugin is its own module depending on core. Contains plugin logic and UI.
-- `app/` — desktop application shell. Depends on core and all plugins. Wires everything together.
+- `core-api/` — domain module. Interfaces, data models, plugin API contract only. No implementations, no UI.
+- `app/` — DI/wiring layer. Assembles implementations, registers plugins, owns the window shell and tab management.
+- Where implementations live is TBD — decided as architecture takes shape.
 
 ## Key constraints
 
