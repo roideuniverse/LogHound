@@ -88,25 +88,20 @@ SQLite is the sole storage engine. All log data lives on disk, queried on demand
 
 Every visual feature is a plugin, including the core log viewer.
 
-**Plugin contract:**
+**UIPlugin contract** (current — covers the rendering surface only):
 - `id` — unique string identifier
 - `name` — human-readable display name
-- `version` — semver string
-- `onActivate(context)` — called when the plugin is loaded, receives the plugin context
-- `onDeactivate()` — called on shutdown
-- `onLogsIngested(batch)` — called incrementally with each batch of new logs
-- `renderPanel()` — a Composable function that provides the plugin's UI
+- `content(modifier)` — a Composable that renders the plugin's UI inside the supplied `Modifier` (the tab content area passes `Modifier.fillMaxSize()`)
 
-**Plugin context provides:**
-- Paginated log queries with filter support
-- Log count queries with filter support
-- A scoped database for the plugin's own tables
-- Tab registration (title and optional icon)
+The lifecycle/data side of the plugin contract (`onActivate`, `onDeactivate`, `onLogsIngested`, scoped storage, `PluginContext` queries) will be reintroduced when the ingester and storage layers land. The current `UIPlugin` is deliberately the smallest interface that lets the window shell render a plugin in a tab. `core-api/PluginContext` already defines the future query surface.
 
 **Plugin loading:**
 - Plugins are compiled-in Kotlin modules
-- Registered at startup in the app module's entry point
+- Registered at startup in the app module's entry point — the app constructs a `List<UIPlugin>` and hands it to the window shell
 - No runtime class loading, no JAR discovery — adding a plugin means adding a module dependency and registering it in code
+
+**core-api Compose dependency:**
+- Because `UIPlugin.content` is a `@Composable`, `core-api` depends on `compose.runtime` and `compose.ui` (for `Modifier`). This is the only UI dependency in `core-api`; concrete UI implementations and Material theming stay in `app`.
 
 ---
 
@@ -130,10 +125,12 @@ Every visual feature is a plugin, including the core log viewer.
 Compose Multiplatform for Desktop.
 
 **Window structure:**
-- Single main window with a tab bar, content area, and status bar
-- Tab bar shows all registered plugins
-- Content area renders the active plugin's `renderPanel()` composable
-- Status bar shows log counts and ingestion status
+- Single main window titled "LogHound" with a native menu bar, a left sidebar, a tab bar, a content area, and (future) a status bar
+- Native menu bar: File (Exit), Edit (Preferences), View (Toggle Sidebar), Help (About). Only Exit is wired in the current shell; the rest are skeleton no-ops.
+- Left sidebar: 220dp wide, light-gray background, lists every registered plugin by name. Clicking a name opens or focuses a tab.
+- Tab bar: top of the content area. Each tab shows the plugin name plus a close button (✕). Closing a tab falls back to the left neighbor. The Core Log Viewer tab is opened automatically on launch.
+- Content area: renders the active tab's `UIPlugin.content(Modifier.fillMaxSize())`.
+- Status bar (future): log counts and ingestion status.
 
 **Detachable tabs:**
 - Each tab's content is a standalone composable with no dependency on its container

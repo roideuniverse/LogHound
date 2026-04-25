@@ -75,10 +75,14 @@ Filters apply immediately as the user types. The status bar shows how many lines
 
 LogHound is a plugin-based app. Every feature that displays logs — including the core log viewer itself — is a plugin. This ensures the plugin API is powerful enough to build any log analysis tool.
 
-**How plugins appear to the user:**
-- Each plugin occupies a tab in the main window
-- The core log viewer is always the first tab and cannot be removed
-- Additional plugin tabs appear after it
+**Window shell:**
+- A left sidebar lists every registered plugin by name. Clicking a plugin opens it as a tab in the content area, or focuses its existing tab if one is already open — plugins are never opened twice.
+- A tab bar runs across the top of the content area. Each tab shows the plugin name and a close button (✕). Closing a tab falls back to focusing the left neighbor; the plugin remains available in the sidebar and can be reopened.
+- The Core Log Viewer tab opens automatically on launch.
+- The selected tab fills the remaining content area with the plugin's UI.
+- A native menu bar provides: **File** (Exit), **Edit** (Preferences), **View** (Toggle Sidebar), **Help** (About). Menu items beyond Exit are skeleton no-ops in the current shell and will be wired up as features land.
+
+**Detachable tabs (future):**
 - Any tab can be detached from the main window into its own floating window by right-clicking the tab or dragging it out
 - A detached tab can be re-docked by closing the floating window
 
