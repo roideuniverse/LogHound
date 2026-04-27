@@ -26,6 +26,14 @@ replay_pid*
 # Kotlin Gradle plugin data, see https://kotlinlang.org/docs/whatsnew20.html#new-directory-for-kotlin-data-in-gradle-projects
 .kotlin/
 
+# Gradle build outputs (matches root and every nested module: app/build, core-api/build, …)
+build/
+.gradle/
+local.properties
+
+# IntelliJ IDEA / Android Studio
+.idea/
+*.iml
 
 .DS_Store
 .claude/
