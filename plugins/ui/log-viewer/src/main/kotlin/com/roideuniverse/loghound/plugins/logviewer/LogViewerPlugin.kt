@@ -90,9 +90,18 @@ class LogViewerPlugin(
                     last >= entries.lastIndex - 2
                 }
                 entries.addAll(matched)
-                if (wasAtBottom && entries.isNotEmpty()) {
-                    listState.scrollToItem(entries.lastIndex)
+                if (wasAtBottom) {
+                    // Tail-following: trim from the front to keep memory bounded. The
+                    // evicted rows are still on disk; load-older fetches them back if
+                    // the user scrolls up later.
+                    while (entries.size > MAX_IN_MEMORY) {
+                        entries.removeAt(0)
+                    }
+                    if (entries.isNotEmpty()) listState.scrollToItem(entries.lastIndex)
                 }
+                // While the user is scrolled up reading history we deliberately don't
+                // evict — they keep their context. The list returns to the cap on the
+                // next at-bottom append.
             }
         }
 
@@ -195,6 +204,7 @@ private fun colorFor(priority: LogPriority): Color = when (priority) {
 
 private const val LOAD_OLDER_THRESHOLD = 10
 private const val LOAD_OLDER_PAGE_SIZE = 500
+private const val MAX_IN_MEMORY = 10_000
 
 @Composable
 private fun LoadingOlderRow() {

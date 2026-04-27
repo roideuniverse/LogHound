@@ -74,9 +74,17 @@ internal class UuidDetailController(
                     (listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1) >= entries.lastIndex - 2
                 }
                 entries.addAll(matched)
-                if (wasAtBottom && entries.isNotEmpty()) {
-                    listState.scrollToItem(entries.lastIndex)
+                if (wasAtBottom) {
+                    // Tail-following: trim from the front to keep memory bounded. The
+                    // evicted rows are still on disk; loadOlder fetches them back if
+                    // the user scrolls up later.
+                    while (entries.size > MAX_IN_MEMORY) {
+                        entries.removeAt(0)
+                    }
+                    if (entries.isNotEmpty()) listState.scrollToItem(entries.lastIndex)
                 }
+                // While the user is scrolled up we don't evict — they keep their
+                // context. The list returns to the cap on the next at-bottom append.
             }
         }
     }
@@ -114,5 +122,6 @@ internal class UuidDetailController(
     private companion object {
         const val INITIAL_LIMIT = 500
         const val LOAD_OLDER_PAGE_SIZE = 500
+        const val MAX_IN_MEMORY = 10_000
     }
 }

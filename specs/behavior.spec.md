@@ -44,9 +44,10 @@ The main log view shows a scrollable list of log entries. Each entry displays: t
 - Timestamps can be displayed as absolute (12:01:03.445) or relative (+2.3s from previous line)
 
 **Performance:**
-- Scrolling remains smooth (60fps) even with millions of log lines
-- The app uses constant memory regardless of how many logs are loaded — only visible lines are in memory
-- The app must never put enough memory pressure on the OS to trigger system warnings or process killing
+- Scrolling remains smooth (60fps) even with millions of log lines.
+- The app uses bounded memory regardless of how many logs have been ingested. Each list (Log Viewer, every open UUID detail sub-tab) keeps at most ~10,000 entries in memory at a time. While the user is following the tail, older entries are evicted from the front of the list as new ones arrive — they remain on disk and reappear if the user scrolls up.
+- While the user has scrolled up to read history, eviction is paused so they don't lose their context. On return to the tail, the list is trimmed back to the cap.
+- The app must never put enough memory pressure on the OS to trigger system warnings or process killing.
 
 ---
 

@@ -288,6 +288,15 @@ The same color mapping is used in both Log Viewer and UUID detail views. The imp
 - Exhaustion: when a fetch returns zero entries, an `olderExhausted` flag flips on and the trigger stops firing for the rest of the session (or until the filter changes, which resets it).
 - For the Log Viewer, the state lives in `LogViewerPlugin.content`. For the UUID detail sub-tabs, the state lives on `UuidDetailController` (`loadingOlder`, `olderExhausted`, `loadOlder()`); the controller takes the `LogRepository` in its constructor so `loadOlder()` doesn't need it as a parameter.
 
+**In-memory cap and eviction (Log Viewer and UUID detail sub-tabs):**
+
+Each list caps its in-memory entries at `MAX_IN_MEMORY` rows (10,000) so memory stays bounded regardless of how long the session has been running.
+
+- On every live append from `repository.ingested`: if the user is currently following the tail (the same "is at bottom" check the auto-scroll uses), evict entries from the front until the list size is ≤ `MAX_IN_MEMORY`. The evicted entries are still on disk and reappear if the user later scrolls up.
+- While the user is scrolled up reading history, eviction is paused. The list may temporarily exceed `MAX_IN_MEMORY` while live entries continue to land at the bottom — this is a deliberate trade for not yanking content out from under the user. On return to the tail, the next live append triggers an eviction pass that brings the list back to the cap.
+- Load-older fetches do not evict — they only prepend. The cap only matters for tail-following.
+- The strict spec target ("memory proportional to viewport, not dataset size") implies a lazy-paging UI; the in-memory cap is a pragmatic approximation, deferred to a Paging-based rewrite.
+
 **UUID Grouping sub-tab UI:**
 
 Inside the UUID Grouping panel:
@@ -772,6 +781,7 @@ The constants the code actually uses, gathered in one place so they don't have t
 
 ### `LogViewerPlugin`
 - Initial query limit on tab open / filter change: 500
+- In-memory cap (`MAX_IN_MEMORY`): 10,000 entries; FIFO evict from the front on live appends only when the user is at the tail.
 - "At-bottom" auto-scroll-resume threshold: visible last item index ≥ entries.lastIndex − 2
 
 ### `LogcatDataPlugin`
@@ -825,6 +835,7 @@ The constants the code actually uses, gathered in one place so they don't have t
 - "At-bottom" auto-scroll threshold: same rule as LogViewer
 - Load-older trigger threshold: 10 rows from the top of the in-memory list
 - Load-older page size: 500 entries
+- In-memory cap (`MAX_IN_MEMORY`): 10,000 entries; same eviction rule as LogViewer.
 
 ### Compose Desktop / native distribution
 - macOS bundle ID: `com.roideuniverse.loghound`
