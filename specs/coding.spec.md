@@ -146,6 +146,7 @@ This contract is what plugins import when they need raw access — e.g. a future
 - All queries are paginated — no unbounded result sets.
 - Regex search uses SQLite's regex support or application-side filtering over indexed subsets.
 - The `:database` module exposes a factory `createLogDataStore(databaseFile: File): LogDataStore` that opens the SQLite file, applies the schema, and returns the implementation.
+- **Every `LogDataStore` method dispatches to `Dispatchers.IO`** before doing any JDBC work. This is load-bearing for UI callers: `rememberCoroutineScope()` in Compose is bound to the Main dispatcher, and a synchronous `executeAsList()` on Main blocks the next recomposition until it returns. With the dispatch in place, every caller — Main, Default, IO — automatically gets off-thread DB work.
 - `LogRepositoryImpl` implements `ingested` as a hot broadcast stream: `append(batch)` first inserts to storage (id-populated entries returned), then emits the id-populated list to all current subscribers in a single value. There is no buffering of past batches.
 
 ### Plugin storage
