@@ -32,7 +32,9 @@ fun main() = application {
     }
 
     val dataPlugins: List<DataPlugin> = remember {
-        listOf(LogcatDataPlugin(), SyntheticDataPlugin(), uuidGrouping)
+        // SyntheticDataPlugin() is commented out so only real device logs flow in.
+        // Re-enable by adding it back to the list.
+        listOf(LogcatDataPlugin(), /* SyntheticDataPlugin(), */ uuidGrouping)
     }
     val uiPlugins: List<UIPlugin> = remember { listOf(LogViewerPlugin(repository), uuidGrouping) }
 
