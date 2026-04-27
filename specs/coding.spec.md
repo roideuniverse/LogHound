@@ -109,6 +109,12 @@ interface LogRepository {
 - An empty-batch call is a no-op: nothing is persisted and nothing is emitted on `ingested`.
 - A non-empty batch is persisted to storage in a single transaction, then emitted on `ingested` as a single value. Order across `ingested` matches the order of `append` calls.
 
+**Filtered-query semantics:**
+
+When `filter` is the empty `LogFilter()`, the implementation issues a single page-sized read against the data store and returns `limit` rows directly.
+
+When `filter` is non-empty, the implementation iterates page-by-page from the cursor (or from the tail when no cursor is given), applying `filter.matches(entry)` to each row, and accumulates matching entries until either `limit` matches are found or the data store is exhausted. The iteration page size is independent of the caller-requested `limit`. This guarantees that `query(filter = LogFilter(textSearch = "rare-token"), limit = 500)` returns the matches even when they sit far older than the latest 500 rows in storage. Performance is bounded by total rows scanned; future SQL filter pushdown will replace this with a single indexed query, but the contract remains the same.
+
 ### `LogDataStore` interface (:database module)
 
 `LogDataStore` is the lower-level data-access contract. It deals in unfiltered cursor reads and bulk inserts; it knows nothing about `LogFilter` or `ingested` broadcasts.

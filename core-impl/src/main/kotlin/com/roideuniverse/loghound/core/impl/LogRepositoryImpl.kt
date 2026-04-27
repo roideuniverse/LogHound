@@ -34,20 +34,85 @@ class LogRepositoryImpl(
         require(beforeId == null || afterId == null) {
             "beforeId and afterId are mutually exclusive"
         }
-        // TODO: push filters into SQL once the filter set is stable.
-        // v1 fetches a page by cursor, applies LogFilter in Kotlin.
-        val rawRows = when {
-            afterId != null -> dataStore.selectAfter(afterId, limit)
-            beforeId != null -> dataStore.selectBefore(beforeId, limit)
-            else -> dataStore.selectTail(limit)
+
+        // Empty filter: single SQL call, return up to `limit` rows directly.
+        if (filter == LogFilter()) {
+            val rawRows = when {
+                afterId != null -> dataStore.selectAfter(afterId, limit)
+                beforeId != null -> dataStore.selectBefore(beforeId, limit)
+                else -> dataStore.selectTail(limit)
+            }
+            return LogPage(
+                entries = rawRows.sortedBy { it.id },
+                hasMore = rawRows.size >= limit,
+            )
         }
-        val matched = rawRows.filter(filter::matches).sortedBy { it.id }
-        return LogPage(entries = matched, hasMore = rawRows.size >= limit)
+
+        // Non-empty filter: scan page-by-page until we collect `limit` matches or
+        // exhaust the store. Without this, queries that match historical entries
+        // outside the latest `limit` rows incorrectly return empty.
+        val matched = mutableListOf<LogEntry>()
+        val pageSize = SCAN_PAGE_SIZE
+
+        suspend fun consumePage(rows: List<LogEntry>): Boolean {
+            for (entry in rows) {
+                if (filter.matches(entry)) {
+                    matched += entry
+                    if (matched.size >= limit) return true
+                }
+            }
+            return false
+        }
+
+        when {
+            afterId != null -> {
+                var cursor: Long = afterId
+                while (matched.size < limit) {
+                    val page = dataStore.selectAfter(cursor, pageSize)
+                    if (page.isEmpty()) break
+                    if (consumePage(page)) break
+                    if (page.size < pageSize) break
+                    cursor = page.last().id
+                }
+            }
+
+            else -> {
+                // No cursor → start from the tail; cursor → start before that id.
+                val firstPage: List<LogEntry> = beforeId
+                    ?.let { dataStore.selectBefore(it, pageSize) }
+                    ?: dataStore.selectTail(pageSize)
+                val firstFull = firstPage.size == pageSize
+                val firstFilled = consumePage(firstPage)
+
+                if (!firstFilled && firstFull) {
+                    // Both selectTail and selectBefore return rows ordered DESC by id;
+                    // the last element is the oldest in the page, so the next backward
+                    // cursor is its id.
+                    var cursor: Long = firstPage.last().id
+                    while (matched.size < limit) {
+                        val page = dataStore.selectBefore(cursor, pageSize)
+                        if (page.isEmpty()) break
+                        if (consumePage(page)) break
+                        if (page.size < pageSize) break
+                        cursor = page.last().id
+                    }
+                }
+            }
+        }
+
+        return LogPage(
+            entries = matched.sortedBy { it.id },
+            hasMore = matched.size >= limit,
+        )
+    }
+
+    private companion object {
+        const val SCAN_PAGE_SIZE = 1_000
     }
 
     override suspend fun count(filter: LogFilter): Long {
         if (filter == LogFilter()) return dataStore.countAll()
-        // TODO: push filter to SQL. v1 streams forward via cursor and counts matches.
+        // Non-empty filter: stream forward via cursor and count matches in Kotlin.
         var total = 0L
         var cursor = 0L
         val pageSize = 1_000
