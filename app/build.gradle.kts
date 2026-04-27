@@ -13,6 +13,12 @@ kotlin {
     sourceSets {
         commonMain.dependencies {
             implementation(project(":core-api"))
+            implementation(project(":database"))
+            implementation(project(":core-impl"))
+            implementation(project(":plugins:ui:log-viewer"))
+            implementation(project(":plugins:ui:uuid-grouping"))
+            implementation(project(":plugins:data:logcat"))
+            implementation(project(":plugins:data:synthetic"))
             implementation(compose.runtime)
             implementation(compose.foundation)
             implementation(compose.material3)
@@ -28,6 +34,12 @@ kotlin {
             implementation(compose.desktop.currentOs)
             implementation(libs.kotlinx.coroutinesSwing)
         }
+        jvmTest.dependencies {
+            implementation(compose.desktop.uiTestJUnit4)
+            implementation(compose.desktop.currentOs)
+            implementation(libs.kotlinx.coroutinesTest)
+            implementation(libs.junit)
+        }
     }
 }
 
@@ -37,8 +49,11 @@ compose.desktop {
 
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
-            packageName = "com.roideuniverse.loghound"
+            packageName = "LogHound"
             packageVersion = "1.0.0"
+            macOS {
+                bundleID = "com.roideuniverse.loghound"
+            }
         }
     }
 }

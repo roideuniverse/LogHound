@@ -33,4 +33,10 @@ plugins {
 }
 
 include(":core-api")
+include(":database")
+include(":core-impl")
 include(":app")
+include(":plugins:ui:log-viewer")
+include(":plugins:ui:uuid-grouping")
+include(":plugins:data:logcat")
+include(":plugins:data:synthetic")

@@ -49,18 +49,22 @@ The main log view shows a scrollable list of log entries. Each entry displays: t
 
 ## Filtering
 
-A filter bar at the top of the log view provides:
+A single compact filter input sits at the top of the log view, modeled on Android Studio's Logcat filter bar. The user types a query and the view filters immediately as they type. There is no separate field per filter type; everything lives in one line.
 
-- **Tag filter** — show only logs whose tag contains the entered text
-- **Log level filter** — dropdown to select minimum priority level (e.g., selecting Warning shows Warning, Error, and Fatal)
-- **PID/TID filter** — show only logs from a specific process or thread ID
-- **Text search** — show only logs whose message contains the entered text
-- **Regex search** — a checkbox enables regex mode for the search field
-- **Package name filter** — show only logs from a specific app package
+**Query syntax:**
+- Bare words match against the message text — `crash` shows lines whose message contains "crash"
+- `key:value` clauses constrain a specific field. Recognized keys:
+  - `tag:` — log tag contains the value
+  - `level:` — minimum priority level (`V`, `D`, `I`, `W`, `E`, `F` or full names `verbose`/`debug`/...). Matches that level and above.
+  - `pid:` — exact process ID
+  - `tid:` — exact thread ID
+  - `package:` — package name contains the value
+- Quoted values allow spaces — `tag:"My Service"`
+- Multiple clauses combine with AND — `tag:Activity level:W crash` shows Warning+ lines from tag "Activity" whose message contains "crash"
+- A leading `/` switches the free-text portion to regex — `/^E\/.*timeout/`
+- An empty input shows all logs
 
-All active filters combine with AND logic — a log line must match every active filter to appear.
-
-Filters apply immediately as the user types. The status bar shows how many lines match the current filter out of the total.
+The input shows a placeholder hint when empty (e.g. `tag:Activity level:W package:mine`). The status bar shows matching lines out of total.
 
 ---
 
@@ -105,15 +109,24 @@ The primary log viewing interface described in the sections above: real-time str
 An analytical discovery tool that finds all UUID-shaped strings across the logs and groups log lines by them.
 
 **Behavior:**
-- The plugin applies a UUID regex pattern against every ingested log message
-- It discovers all unique UUIDs automatically — the user does not need to know or enter a specific UUID
-- It presents a list of all discovered UUIDs with the count of log lines containing each
-- The UUID list is sortable by count or alphabetically
-- The UUID list is searchable/filterable
-- Clicking a UUID shows all log lines that contain it, in chronological order
-- If 500 different UUIDs appear across the logs, the user sees 500 groups
+- The plugin applies a UUID regex pattern against every ingested log message and against every historical log on first run.
+- It discovers all unique UUIDs automatically — the user does not need to know or enter a specific UUID.
+- It presents a list of all discovered UUIDs with the count of log lines containing each.
+- The UUID list is sortable by count or alphabetically and is searchable/filterable.
+- The plugin always runs in the background — it processes ingested logs whether or not its tab is open. Closing the tab does not stop the work.
+- Historical scans are checkpointed: on first run it scans every log; on subsequent runs (and after enable→disable→enable cycles in the future) it resumes from the last scanned log and only processes the gap.
+- The UI remains responsive while a backfill is in progress. A progress indicator shows scan status and current UUID count. Partial results are immediately browseable.
 
-**Use case:** A developer's app uses UUIDs as correlation IDs for operations, sessions, or requests. This plugin lets them instantly see all operations, how many log lines each produced, and drill into any one to follow its lifecycle through the logs.
+**v1 click action:** clicking a UUID copies it to the clipboard so the user can paste it into the Log Viewer's filter bar (`textSearch`).
+
+**Future:** clicking a UUID will show all log lines that contain it in a dedicated view, in chronological order. This requires a full-text-search index on the main logs database and is deferred to a later round.
+
+**Scale targets:**
+- Must remain responsive at **≥ 100,000 unique UUIDs** with **≥ 50,000,000 ingested log lines** scanned (e.g. 100K UUIDs × ~500 occurrences each).
+- Designed to scale to ~1M UUIDs and 100M+ lines on the same architecture.
+- Memory footprint of the UI is constant (renders only visible rows). On-disk plugin state grows linearly with unique UUIDs, not with occurrences.
+
+**Use case:** A developer's app uses UUIDs as correlation IDs for operations, sessions, or requests. This plugin lets them instantly see all operations, how many log lines each produced, and (in a future round) drill into any one to follow its lifecycle through the logs.
 
 ---
 

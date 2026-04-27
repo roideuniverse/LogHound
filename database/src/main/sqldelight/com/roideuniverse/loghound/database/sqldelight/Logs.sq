@@ -1,0 +1,43 @@
+CREATE TABLE logs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+    timestamp TEXT NOT NULL,
+    pid INTEGER NOT NULL,
+    tid INTEGER NOT NULL,
+    priority TEXT NOT NULL,
+    tag TEXT NOT NULL,
+    message TEXT NOT NULL,
+    package_name TEXT
+);
+
+CREATE INDEX logs_timestamp ON logs(timestamp);
+CREATE INDEX logs_tag ON logs(tag);
+CREATE INDEX logs_priority ON logs(priority);
+CREATE INDEX logs_pid ON logs(pid);
+CREATE INDEX logs_package_name ON logs(package_name);
+
+insert:
+INSERT INTO logs(timestamp, pid, tid, priority, tag, message, package_name)
+VALUES (?, ?, ?, ?, ?, ?, ?);
+
+selectTail:
+SELECT *
+FROM logs
+ORDER BY id DESC
+LIMIT :lim;
+
+selectBefore:
+SELECT *
+FROM logs
+WHERE id < :beforeId
+ORDER BY id DESC
+LIMIT :lim;
+
+selectAfter:
+SELECT *
+FROM logs
+WHERE id > :afterId
+ORDER BY id ASC
+LIMIT :lim;
+
+countAll:
+SELECT COUNT(*) FROM logs;

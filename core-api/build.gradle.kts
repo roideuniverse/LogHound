@@ -5,9 +5,9 @@ plugins {
 }
 
 dependencies {
-    implementation(libs.kotlinx.coroutinesCore)
-    implementation(compose.runtime)
-    implementation(compose.ui)
+    api(libs.kotlinx.coroutinesCore)
+    api(compose.runtime)
+    api(compose.ui)
     testImplementation(libs.kotlin.test)
     testImplementation(libs.junit)
 }
