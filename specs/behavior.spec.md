@@ -34,6 +34,7 @@ The main log view shows a scrollable list of log entries. Each entry displays: t
 - The view automatically scrolls to show the newest logs as they arrive
 - When the user scrolls up, auto-scroll pauses so they can read without the view jumping
 - A button or scrolling to the bottom resumes auto-scroll
+- A vertical scrollbar is visible on the right edge of the log list (and the same on any other long list, e.g. the UUID Grouping list)
 
 **Display options:**
 - Log lines are color-coded by priority level: Verbose=gray, Debug=blue, Info=green, Warning=amber, Error=red, Fatal=red bold

@@ -1,5 +1,6 @@
 package com.roideuniverse.loghound.plugins.uuidgrouping
 
+import androidx.compose.foundation.VerticalScrollbar
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -7,14 +8,18 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollbarAdapter
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.Surface
@@ -237,27 +242,39 @@ private fun SearchField(value: String, onChange: (String) -> Unit, modifier: Mod
 @Composable
 private fun UuidList(rows: List<Uuids>) {
     val clipboard = LocalClipboardManager.current
-    LazyColumn(modifier = Modifier.fillMaxSize().testTag(UuidTestTags.UUID_LIST)) {
-        items(items = rows, key = { it.uuid }) { row ->
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { clipboard.setText(AnnotatedString(row.uuid)) }
-                    .padding(horizontal = 8.dp, vertical = 4.dp)
-                    .testTag(UuidTestTags.UUID_ROW),
-                verticalAlignment = Alignment.CenterVertically,
+    val listState = rememberLazyListState()
+    Box(modifier = Modifier.fillMaxSize()) {
+        SelectionContainer(modifier = Modifier.fillMaxSize()) {
+            LazyColumn(
+                state = listState,
+                modifier = Modifier.fillMaxSize().testTag(UuidTestTags.UUID_LIST),
             ) {
-                Text(
-                    text = row.count.toString().padStart(7),
-                    style = TextStyle(fontFamily = FontFamily.Monospace, fontSize = 12.sp, fontWeight = FontWeight.Medium, color = Color(0xFF333333)),
-                )
-                Spacer(Modifier.width(12.dp))
-                Text(
-                    text = row.uuid,
-                    style = TextStyle(fontFamily = FontFamily.Monospace, fontSize = 12.sp, color = Color(0xFF222222)),
-                )
+                items(items = rows, key = { it.uuid }) { row ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { clipboard.setText(AnnotatedString(row.uuid)) }
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                            .testTag(UuidTestTags.UUID_ROW),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = row.count.toString().padStart(7),
+                            style = TextStyle(fontFamily = FontFamily.Monospace, fontSize = 12.sp, fontWeight = FontWeight.Medium, color = Color(0xFF333333)),
+                        )
+                        Spacer(Modifier.width(12.dp))
+                        Text(
+                            text = row.uuid,
+                            style = TextStyle(fontFamily = FontFamily.Monospace, fontSize = 12.sp, color = Color(0xFF222222)),
+                        )
+                    }
+                    HorizontalDivider(color = Color(0xFFEEEEEE))
+                }
             }
-            HorizontalDivider(color = Color(0xFFEEEEEE))
         }
+        VerticalScrollbar(
+            modifier = Modifier.align(Alignment.CenterEnd).fillMaxHeight(),
+            adapter = rememberScrollbarAdapter(listState),
+        )
     }
 }
