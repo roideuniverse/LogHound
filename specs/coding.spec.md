@@ -286,6 +286,7 @@ Inside the UUID Grouping panel:
 - Clicking a UUID row opens (or focuses) a sub-tab labelled with the first 8 characters of the UUID followed by `…`. Each sub-tab has a close (`✕`).
 - Each open sub-tab retains its scroll position when the user switches tabs.
 - Each sub-tab runs an independent live subscriber that initially queries `LogRepository.query(filter = LogFilter(textSearch = uuid), limit = 500)` then follows `LogRepository.ingested` to append matching live entries. Closing the sub-tab cancels the subscriber. The `DataPlugin.run` side of UUID Grouping is unaffected by sub-tab open/close — the master backfill continues regardless.
+- The detail view exposes three rendering states driven by the controller: **loading** (initial query in flight — render a centered progress indicator), **empty** (initial query complete, no matches yet — render an empty-state message), and **loaded** (one or more entries — render the list). The controller's `loading` flag is observable Compose state; it flips to `false` in a `finally` block around the initial query so it always settles regardless of cancellation or error.
 
 **Package UID lookup (Log Viewer):**
 
@@ -858,6 +859,8 @@ Tags are defined in plugin-internal `TestTags` / `UuidTestTags` objects. They ar
 - `uuidGrouping.tabClose` — the `✕` inside non-master sub-tabs
 - `uuidGrouping.detailList` — the `LazyColumn` inside a UUID detail sub-tab
 - `uuidGrouping.detailRow` — each row in the detail list
+- `uuidGrouping.detailLoading` — the loading indicator shown while the initial query runs
+- `uuidGrouping.detailEmpty` — the empty-state message shown when the query returned zero matches
 
 ### Test commands
 

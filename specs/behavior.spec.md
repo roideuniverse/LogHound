@@ -153,6 +153,8 @@ The detail view is implemented today via `LogRepository.query(filter = LogFilter
 - Designed to scale to ~1M UUIDs and 100M+ lines on the same architecture.
 - Memory footprint of the UI is constant (renders only visible rows). On-disk plugin state grows linearly with unique UUIDs, not with occurrences.
 
+**Detail tab loading state:** opening a UUID detail sub-tab shows a small loading indicator centered in the panel while the initial query runs against the logs database. Once the query completes the panel switches to either the list of matching log lines (sorted chronologically, with live updates appended as new matches arrive) or, if zero rows matched, a quiet "No log lines for this UUID" empty-state message. Live updates continue to populate the list in both cases — if the empty state turns up a match later, the list takes over.
+
 **Use case:** A developer's app uses UUIDs as correlation IDs for operations, sessions, or requests. This plugin lets them instantly see all operations, how many log lines each produced, and drill into any one to follow its lifecycle through the logs.
 
 ### Synthetic data (development convenience)

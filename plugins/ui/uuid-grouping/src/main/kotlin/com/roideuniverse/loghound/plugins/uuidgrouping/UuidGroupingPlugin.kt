@@ -20,6 +20,7 @@ import androidx.compose.foundation.rememberScrollbarAdapter
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.Surface
@@ -352,6 +353,59 @@ private fun SearchField(value: String, onChange: (String) -> Unit, modifier: Mod
 }
 
 @Composable
+private fun UuidDetailView(controller: UuidDetailController) {
+    Box(modifier = Modifier.fillMaxSize()) {
+        when {
+            controller.loading -> DetailLoading()
+            controller.entries.isEmpty() -> DetailEmpty()
+            else -> DetailList(controller)
+        }
+    }
+}
+
+@Composable
+private fun DetailLoading() {
+    Box(
+        modifier = Modifier.fillMaxSize().testTag(UuidTestTags.UUID_DETAIL_LOADING),
+        contentAlignment = Alignment.Center,
+    ) {
+        CircularProgressIndicator(strokeWidth = 2.dp, modifier = Modifier.width(24.dp))
+    }
+}
+
+@Composable
+private fun DetailEmpty() {
+    Box(
+        modifier = Modifier.fillMaxSize().testTag(UuidTestTags.UUID_DETAIL_EMPTY),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = "No log lines for this UUID",
+            color = Color(0xFF999999),
+            style = TextStyle(fontSize = 13.sp),
+        )
+    }
+}
+
+@Composable
+private fun DetailList(controller: UuidDetailController) {
+    Box(modifier = Modifier.fillMaxSize()) {
+        SelectionContainer(modifier = Modifier.fillMaxSize()) {
+            LazyColumn(
+                state = controller.listState,
+                modifier = Modifier.fillMaxSize().testTag(UuidTestTags.UUID_DETAIL_LIST),
+            ) {
+                items(items = controller.entries, key = { it.id }) { entry -> DetailLogRow(entry) }
+            }
+        }
+        VerticalScrollbar(
+            modifier = Modifier.align(Alignment.CenterEnd).fillMaxHeight(),
+            adapter = rememberScrollbarAdapter(controller.listState),
+        )
+    }
+}
+
+@Composable
 private fun UuidList(rows: List<Uuids>, onUuidClick: (String) -> Unit) {
     val listState = rememberLazyListState()
     Box(modifier = Modifier.fillMaxSize()) {
@@ -386,24 +440,6 @@ private fun UuidList(rows: List<Uuids>, onUuidClick: (String) -> Unit) {
         VerticalScrollbar(
             modifier = Modifier.align(Alignment.CenterEnd).fillMaxHeight(),
             adapter = rememberScrollbarAdapter(listState),
-        )
-    }
-}
-
-@Composable
-private fun UuidDetailView(controller: UuidDetailController) {
-    Box(modifier = Modifier.fillMaxSize()) {
-        SelectionContainer(modifier = Modifier.fillMaxSize()) {
-            LazyColumn(
-                state = controller.listState,
-                modifier = Modifier.fillMaxSize().testTag(UuidTestTags.UUID_DETAIL_LIST),
-            ) {
-                items(items = controller.entries, key = { it.id }) { entry -> DetailLogRow(entry) }
-            }
-        }
-        VerticalScrollbar(
-            modifier = Modifier.align(Alignment.CenterEnd).fillMaxHeight(),
-            adapter = rememberScrollbarAdapter(controller.listState),
         )
     }
 }

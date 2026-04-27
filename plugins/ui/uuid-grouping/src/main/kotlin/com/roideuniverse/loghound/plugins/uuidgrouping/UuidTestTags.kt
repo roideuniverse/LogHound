@@ -13,4 +13,6 @@ object UuidTestTags {
 
     const val UUID_DETAIL_LIST = "uuidGrouping.detailList"
     const val UUID_DETAIL_ROW = "uuidGrouping.detailRow"
+    const val UUID_DETAIL_LOADING = "uuidGrouping.detailLoading"
+    const val UUID_DETAIL_EMPTY = "uuidGrouping.detailEmpty"
 }
