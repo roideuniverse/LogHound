@@ -3,6 +3,7 @@ package com.roideuniverse.loghound.plugins.logcat
 import com.roideuniverse.loghound.core.DataPlugin
 import com.roideuniverse.loghound.core.LogEntry
 import com.roideuniverse.loghound.core.LogRepository
+import com.roideuniverse.loghound.plugins.logcat.internal.PackageResolver
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.coroutineScope
@@ -56,13 +57,22 @@ class LogcatDataPlugin : DataPlugin {
             }
         }
 
+        // Background PID → package resolver: snapshots `adb shell ps -A` every 30s. The
+        // streaming hot path queries it synchronously without IO; PIDs not yet seen
+        // by a refresh are ingested with packageName = null and get attributed on the
+        // next refresh.
+        val resolver = PackageResolver(adb, deviceId)
+        val resolverJob = launch { resolver.runRefreshLoop() }
+
         try {
             withContext(Dispatchers.IO) {
                 val reader = proc.inputStream.bufferedReader()
                 val batch = ArrayList<LogEntry>(BATCH_SIZE)
                 while (true) {
                     val line = reader.readLine() ?: break
-                    LogcatThreadtimeParser.parse(line)?.let { batch.add(it) }
+                    LogcatThreadtimeParser.parse(line)?.let { entry ->
+                        batch.add(entry.copy(packageName = resolver.packageNameFor(entry.pid)))
+                    }
                     if (batch.size >= BATCH_SIZE) {
                         repository.append(batch.toList())
                         batch.clear()
@@ -71,6 +81,7 @@ class LogcatDataPlugin : DataPlugin {
                 if (batch.isNotEmpty()) repository.append(batch.toList())
             }
         } finally {
+            resolverJob.cancel()
             destroyOnCancel.cancel()
             proc.destroyForcibly()
         }

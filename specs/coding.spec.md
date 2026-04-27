@@ -282,7 +282,19 @@ Inside the UUID Grouping panel:
 
 **Package UID lookup (Log Viewer):**
 
-A small input field and Find button sit above the filter bar. Typing a substring (e.g. `com.app.debug`) and pressing Find queries the connected device for matching packages and renders a small list of `(package, uid)` rows. Each row has a copy button that puts the UID on the clipboard. When no device is reachable the Find button reports "No device" and stays disabled. This is a convenience for users who want to filter their own `adb logcat --uid=<uid>` session outside LogHound; the LogHound filter bar itself does not interpret UIDs.
+A small input field and Find button sit above the filter bar. Typing a substring (e.g. `com.app.debug`) and pressing Find queries the connected device for matching packages and renders a small list of `(package, uid)` rows. Each row offers two copy actions: one for `package:com.app.debug` (paste into LogHound's filter bar) and one for `--uid=10231` (paste into an external `adb logcat` invocation). When no device is reachable the Find button reports "No device" and stays disabled.
+
+**Package-name resolution (logcat plugin):**
+
+Each `LogEntry` produced by `LogcatDataPlugin` carries the package name of the process that emitted the line. The plugin instantiates a `PackageResolver` per device connection, which:
+
+- Runs `adb -s <device> shell ps -A` on connect to seed an in-memory `PID → package` map.
+- Refreshes the map every 30 seconds so newly-launched processes are picked up.
+- Cancels its background refresh loop when the parent connection is cancelled.
+- Normalises process names with sub-process suffixes (e.g. `com.app.debug:remote` → `com.app.debug`) and drops kernel threads (names beginning with `[`).
+- Exposes a synchronous, non-suspending `packageNameFor(pid)` query for the streaming hot path — the parser path looks the PID up in the cache without IO. PIDs not yet seen by a refresh return `null`; the next refresh fills them.
+
+The `package_name` column on the `logs` table (already nullable, already indexed) is set from this lookup at insert time. There is no retroactive backfill of rows already inserted with `null`.
 
 ---
 
@@ -695,6 +707,17 @@ The Package UID lookup runs `adb shell pm list packages -U <substring>` and pars
 
 Two capture groups: the package name and the integer UID. Lines that don't match are dropped silently (the command sometimes prefixes diagnostic lines or trailing whitespace).
 
+### `ps -A` output parser (`plugins/data/logcat`)
+
+The package-name resolver parses `adb shell ps -A` output. The format varies by Android version, so the parser uses a positional approach rather than a fixed regex:
+
+- Drop the first line (the header).
+- Split each remaining line on runs of whitespace.
+- The PID is the second column; the process NAME is the **last** column.
+- Discard rows where the PID isn't an integer.
+- Discard rows where the NAME starts with `[` (kernel threads).
+- Strip any sub-process suffix from the NAME (`com.app.debug:remote` → `com.app.debug`).
+
 ### Filter query parser (`plugins/ui/log-viewer`)
 
 Tokenization:
@@ -743,6 +766,13 @@ The constants the code actually uses, gathered in one place so they don't have t
   3. `~/Library/Android/sdk/platform-tools/adb` (macOS default)
   4. `adb` (rely on `PATH`)
 - ADB device picker: first device whose `adb devices` line ends with `\tdevice` (skips `unauthorized` / `offline`).
+
+### `PackageResolver`
+- Snapshot command: `adb -s <device> shell ps -A`
+- Refresh interval: 30,000 ms
+- Cache type: thread-safe `ConcurrentHashMap<Int, String>` (PIDs are integer-keyed; lookups are sync from the streaming path).
+- Process-name normalisation: split on `:` and keep the parent (`com.app.debug:remote` → `com.app.debug`); drop kernel threads (names starting with `[`).
+- On `ps` invocation failure: return an empty snapshot, leave the cache untouched, retry at the next interval.
 
 ### Package UID lookup (Log Viewer)
 - ADB command: `adb shell pm list packages -U <substring>`
@@ -811,7 +841,8 @@ Tags are defined in plugin-internal `TestTags` / `UuidTestTags` objects. They ar
 - `logViewer.packageLookupInput` — the Package UID lookup input
 - `logViewer.packageLookupFind` — the Find button
 - `logViewer.packageLookupResultRow` — each `(package, uid)` result row
-- `logViewer.packageLookupCopy` — the per-row copy button
+- `logViewer.packageLookupCopyPackage` — per-row "Copy `package:…`" action
+- `logViewer.packageLookupCopyUid` — per-row "Copy `--uid=…`" action
 
 **UUID Grouping** (`plugins/ui/uuid-grouping/.../UuidTestTags.kt`):
 - `uuidGrouping.uuidList` — the master `LazyColumn`

@@ -161,16 +161,38 @@ private fun ResultRow(row: PackageInfo, copy: (AnnotatedString) -> Unit) {
             style = TextStyle(fontFamily = FontFamily.Monospace, fontSize = 12.sp, color = Color(0xFF555555)),
         )
         Spacer(Modifier.width(8.dp))
-        Text(
-            text = "Copy",
-            style = TextStyle(fontSize = 12.sp, color = Color(0xFF1976D2)),
-            modifier = Modifier
-                .clickable { copy(AnnotatedString(row.uid.toString())) }
-                .testTag(TestTags.PACKAGE_LOOKUP_COPY)
-                .padding(horizontal = 4.dp),
+        CopyAction(
+            label = "Copy package:…",
+            value = "package:${row.packageName}",
+            tag = TestTags.PACKAGE_LOOKUP_COPY_PACKAGE,
+            copy = copy,
+        )
+        Spacer(Modifier.width(4.dp))
+        CopyAction(
+            label = "Copy --uid=…",
+            value = "--uid=${row.uid}",
+            tag = TestTags.PACKAGE_LOOKUP_COPY_UID,
+            copy = copy,
         )
     }
     HorizontalDivider(color = Color(0xFFEEEEEE))
+}
+
+@Composable
+private fun CopyAction(
+    label: String,
+    value: String,
+    tag: String,
+    copy: (AnnotatedString) -> Unit,
+) {
+    Text(
+        text = label,
+        style = TextStyle(fontSize = 12.sp, color = Color(0xFF1976D2)),
+        modifier = Modifier
+            .clickable { copy(AnnotatedString(value)) }
+            .testTag(tag)
+            .padding(horizontal = 4.dp),
+    )
 }
 
 internal sealed class LookupOutcome {

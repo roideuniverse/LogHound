@@ -78,9 +78,25 @@ The input shows a placeholder hint when empty (e.g. `tag:Activity level:W packag
 
 ## Package UID lookup
 
-Above the filter bar in the Log Viewer there's a small input field and a Find button. The user types all or part of a package name (e.g. `com.app.debug`); pressing Find queries the connected device for matching packages and shows a small list of `(package, uid)` rows underneath the input. Each row has a copy button that puts the UID on the clipboard. When no device is reachable the Find button reports "No device" and stays disabled.
+Above the filter bar in the Log Viewer there's a small input field and a Find button. The user types all or part of a package name (e.g. `com.app.debug`); pressing Find queries the connected device for matching packages and shows a small list of `(package, uid)` rows underneath the input. When no device is reachable the Find button reports "No device" and stays disabled.
 
-This is a convenience for users who want to filter their own `adb logcat --uid=<uid>` session outside LogHound; the LogHound filter bar itself does not interpret UIDs — paste the UID into your own terminal session.
+Each result row has two copy actions:
+
+- **Copy `package:…`** — copies `package:com.app.debug` to the clipboard. Paste straight into the LogHound filter bar to scope the Log Viewer to that app.
+- **Copy `--uid=…`** — copies `--uid=10231` to the clipboard. Paste into a terminal `adb logcat …` invocation to filter outside LogHound.
+
+The first action assumes the in-app package filter works, which depends on the package-name resolution described below.
+
+## Package-name resolution
+
+Each ingested log line is annotated with the package name of the process that produced it. Resolution happens automatically while the logcat plugin is running:
+
+- On device connect, the plugin takes a one-time snapshot of running processes and builds a `PID → package` map.
+- The map refreshes every 30 seconds so newly-launched apps appear without restarting the session.
+- Log lines whose PID isn't yet in the map are ingested with a `null` package; they get attributed on the next refresh (visible to the UI as soon as the next refresh completes — there is no retroactive backfill of older rows).
+- Process names that include a sub-process suffix (e.g. `com.app.debug:remote`) are normalised to the parent package (`com.app.debug`).
+
+Once a log line has a package, it stays — the package field is part of every persisted row, so the filter bar's `package:` clause and SQL queries work on it directly.
 
 ---
 
