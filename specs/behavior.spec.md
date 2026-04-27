@@ -31,10 +31,10 @@ The app handles all three seamlessly. The user picks a source and the logs begin
 The main log view shows a scrollable list of log entries. Each entry displays: timestamp, process ID (PID), thread ID (TID), log priority level, tag, and message.
 
 **Scrolling behavior:**
-- The view automatically scrolls to show the newest logs as they arrive
-- When the user scrolls up, auto-scroll pauses so they can read without the view jumping
-- A button or scrolling to the bottom resumes auto-scroll
-- A vertical scrollbar is visible on the right edge of the log list (and the same on any other long list, e.g. the UUID Grouping list)
+- The view automatically scrolls to show the newest logs as they arrive.
+- When the user scrolls up, auto-scroll pauses so they can read without the view jumping.
+- A "Jump to bottom" button appears in the lower-right corner of the log list whenever the user is not at the tail. Clicking it snaps to the latest entry and resumes auto-scroll on subsequent appends.
+- A vertical scrollbar is visible on the right edge of the log list (and the same on any other long list, e.g. the UUID Grouping list and any UUID detail sub-tab).
 
 **Display options:**
 - Log lines are color-coded by priority level: Verbose=gray, Debug=blue, Info=green, Warning=amber, Error=red, Fatal=red bold
@@ -71,8 +71,8 @@ The input shows a placeholder hint when empty (e.g. `tag:Activity level:W packag
 
 ## Log actions
 
-- **Copy** — select one or more log lines and copy them to the clipboard via right-click context menu or keyboard shortcut
-- **Export** — export the currently filtered log view to a file on disk
+- **Copy** — drag-select one or more log lines (the log list is wrapped in a selection container) and copy them to the clipboard via the standard keyboard shortcut (`Cmd+C` on macOS, `Ctrl+C` on Windows/Linux). The same drag-select-to-copy behavior applies to the UUID Grouping list and to UUID detail sub-tabs.
+- **Export** *(not yet implemented)* — export the currently filtered log view to a file on disk.
 
 ---
 
@@ -118,16 +118,24 @@ An analytical discovery tool that finds all UUID-shaped strings across the logs 
 - Historical scans are checkpointed: on first run it scans every log; on subsequent runs (and after enable→disable→enable cycles in the future) it resumes from the last scanned log and only processes the gap.
 - The UI remains responsive while a backfill is in progress. A progress indicator shows scan status and current UUID count. Partial results are immediately browseable.
 
-**v1 click action:** clicking a UUID copies it to the clipboard so the user can paste it into the Log Viewer's filter bar (`textSearch`).
+**Click action:** clicking a UUID in the list opens (or focuses) a **sub-tab inside the UUID Grouping panel** showing every log line that contains that UUID, in chronological order. Multiple UUIDs can be opened in parallel — each gets its own sub-tab with a close (`✕`). Switching sub-tabs preserves scroll position. The sub-tab list reuses the Log Viewer's priority colors, vertical scrollbar, and drag-select-to-copy behavior, and stays live as new matching log lines are ingested.
 
-**Future:** clicking a UUID will show all log lines that contain it in a dedicated view, in chronological order. This requires a full-text-search index on the main logs database and is deferred to a later round.
+The sub-tab labels show the first 8 characters of the UUID followed by `…`. The "UUIDs" sub-tab is always the leftmost and returns to the master list.
+
+The detail view is implemented today via `LogRepository.query(filter = LogFilter(textSearch = uuid))` which scans cursor-paginated pages and matches in Kotlin. This is fine for synthetic data and single-device sessions; for huge logs (10M+ lines) a future full-text-search index on the main logs DB will make drill-down sub-millisecond. Adding that FTS index is a performance follow-up — it doesn't change UX.
 
 **Scale targets:**
 - Must remain responsive at **≥ 100,000 unique UUIDs** with **≥ 50,000,000 ingested log lines** scanned (e.g. 100K UUIDs × ~500 occurrences each).
 - Designed to scale to ~1M UUIDs and 100M+ lines on the same architecture.
 - Memory footprint of the UI is constant (renders only visible rows). On-disk plugin state grows linearly with unique UUIDs, not with occurrences.
 
-**Use case:** A developer's app uses UUIDs as correlation IDs for operations, sessions, or requests. This plugin lets them instantly see all operations, how many log lines each produced, and (in a future round) drill into any one to follow its lifecycle through the logs.
+**Use case:** A developer's app uses UUIDs as correlation IDs for operations, sessions, or requests. This plugin lets them instantly see all operations, how many log lines each produced, and drill into any one to follow its lifecycle through the logs.
+
+### Synthetic data (development convenience)
+
+For working on LogHound itself without a connected device, a built-in synthetic data source produces realistic-looking logcat lines at about 100 per second. The data deliberately includes a small reusable pool of UUIDs distributed unevenly — a handful are "hot" with many occurrences, most are rare — so the UUID Grouping plugin has interesting structure to reveal even on a fresh database.
+
+Synthetic data is on by default during development; in real-device sessions you turn it off. The exact tag pool, message templates, and randomness knobs are pinned in the coding spec (Appendix D) so the demo data stays reproducible across regenerations.
 
 ---
 

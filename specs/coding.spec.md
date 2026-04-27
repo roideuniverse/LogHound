@@ -4,7 +4,7 @@
 
 - Kotlin
 - Compose Multiplatform for Desktop
-- SQLite (via SQLDelight or Exposed)
+- SQLite, accessed through SQLDelight (the SQLite-3.24 dialect for `ON CONFLICT … DO UPDATE` UPSERT support; the JdbcSqliteDriver from `app.cash.sqldelight:sqlite-driver`)
 - Gradle with Kotlin DSL
 - JDK 17+
 
@@ -115,7 +115,11 @@ interface LogRepository {
 
 ```kotlin
 interface LogDataStore {
-    suspend fun insert(batch: List<LogEntry>)
+    /**
+     * Inserts each entry and returns the same entries with their auto-assigned ids
+     * filled in, in the same order as `batch`. Empty input returns an empty list.
+     */
+    suspend fun insert(batch: List<LogEntry>): List<LogEntry>
 
     suspend fun selectTail(limit: Int): List<LogEntry>
     suspend fun selectBefore(beforeId: Long, limit: Int): List<LogEntry>
@@ -125,7 +129,9 @@ interface LogDataStore {
 }
 ```
 
-This contract is what plugins import when they need raw access — e.g. UUID Grouping running its own indexed scan, or any plugin issuing custom SQL via the SQLDelight-generated query objects exposed alongside the implementation.
+`insert` returning the id-populated entries is load-bearing: subscribers of `LogRepository.ingested` need real ids on every emitted `LogEntry`, otherwise UI keys (`LazyColumn(items, key = { it.id })`) collide. The SQLDelight implementation reads `last_insert_rowid()` once at the end of the insert transaction and back-fills the contiguous id range onto the input list.
+
+This contract is what plugins import when they need raw access — e.g. a future UUID-detail FTS scanner, or any plugin issuing custom SQL via the SQLDelight-generated query objects exposed alongside the implementation.
 
 ### Default implementation (`:database`, SQLDelight + SQLite)
 
@@ -218,7 +224,7 @@ This pattern keeps the UI responsive on first-time scans of GB-scale logs and ma
 - All non-null fields combine with AND logic
 - Built by parsing the single-line filter query (see behavior spec → Filtering). A `FilterQueryParser` translates user input into a `LogFilter`; unrecognized `key:` clauses are treated as free text.
 
-**LogPage** — a single page of query results from `LogStore.query`:
+**LogPage** — a single page of query results from `LogRepository.query`:
 - `entries: List<LogEntry>` — the rows for this page, in chronological order (id ascending) regardless of which cursor was used. Implementations reverse internally if needed so consumers always render in the same order.
 - `hasMore: Boolean` — whether another page exists beyond this one in the same direction. The consumer uses the first/last entry's `id` as the next cursor.
 
@@ -242,9 +248,37 @@ Compose Multiplatform for Desktop.
 - Closing a detached window re-docks the tab to the main window
 
 **Virtual scrolling:**
-- Log lists use Compose `LazyColumn`
-- Backed by paginated database queries — only visible rows plus a small buffer are in memory
-- Scroll position drives which page of data is fetched
+- Log lists use Compose `LazyColumn`.
+- Backed by paginated database queries — only visible rows plus a small buffer are in memory.
+- Scroll position drives which page of data is fetched.
+- Each long list is wrapped in a `Box` with a `VerticalScrollbar` overlaid on the right edge (`rememberScrollbarAdapter(listState)`).
+- Each long list is wrapped in a `SelectionContainer` to enable drag-select copy across rows.
+
+**Log row colors (Log Viewer and UUID detail sub-tabs):**
+
+Rows are colored by `LogEntry.priority`:
+- Verbose → gray (`#666666`)
+- Debug → blue (`#1976D2`)
+- Info → green (`#388E3C`)
+- Warn → amber (`#F57C00`)
+- Error → red (`#D32F2F`)
+- Fatal → red (`#D32F2F`) with `FontWeight.Bold`
+- Silent → light gray (`#999999`)
+
+The same color mapping is used in both Log Viewer and UUID detail views. Today the implementation is intentionally duplicated across the two plugin modules; it will be extracted to a shared `plugin-utils` module only when a third consumer appears.
+
+**Jump-to-bottom button (Log Viewer):**
+
+- A floating `Button` appears at `Alignment.BottomEnd` of the log list whenever the user is not within ~2 rows of the tail (derived from `listState.layoutInfo.visibleItemsInfo`).
+- Tapping scrolls to `entries.lastIndex`. Subsequent ingested batches resume auto-scrolling because the existing "is at bottom" check sees the user back at the tail.
+
+**UUID Grouping sub-tab UI:**
+
+Inside the UUID Grouping panel:
+- A small tab strip at the top. The "UUIDs" tab is always present and selected by default; selecting it shows the master list with the search/sort toolbar.
+- Clicking a UUID row opens (or focuses) a sub-tab labelled with the first 8 characters of the UUID followed by `…`. Each sub-tab has a close (`✕`).
+- Each open sub-tab is backed by a `UuidDetailController` (in `plugins/ui/uuid-grouping/.../internal/`). The controller owns the `entries` list, a `LazyListState` (so scroll position survives tab switches), and a cancellable `Job` that initially queries `repository.query(filter = LogFilter(textSearch = uuid), limit = 500)` then collects `repository.ingested` to append matching live entries.
+- Closing a sub-tab cancels its `Job` and releases its state. The `DataPlugin.run` side of UUID Grouping is unaffected by sub-tab open/close — the master backfill continues regardless.
 
 ---
 
@@ -264,3 +298,507 @@ Compose Multiplatform for Desktop.
 - Database errors are surfaced in the status bar, not as modal dialogs
 - ADB connection failures show a clear status and allow retry
 - Plugin exceptions are caught by the core — a crashing plugin does not take down the app
+
+---
+
+## Appendix A — Build conventions
+
+If you've read the main spec you already know what the modules *are*; this appendix is just the build-file recipe for each one, kept here so the project can be set up from scratch without guessing about Gradle plugin combinations.
+
+Most modules are plain `kotlinJvm`. The interesting bits are: `core-api` uses `api` (not `implementation`) for coroutines and Compose because those types appear in its public surface; the `database` module owns the SQLDelight setup for the main logs DB; UI plugins that need their own SQLite file pick up SQLDelight too; the `app` module is the only Kotlin Multiplatform module so that Compose Desktop's `nativeDistributions` configuration applies cleanly.
+
+Each block below is the exact content of the file in the working tree. Adding a new module of the same type means copying the matching recipe and swapping the names.
+
+### `gradle/libs.versions.toml`
+
+```toml
+[versions]
+kotlin = "2.3.20"
+composeMultiplatform = "1.10.3"
+composeHotReload = "1.0.0"
+kotlinxCoroutines = "1.10.2"
+androidxLifecycle = "2.10.0"
+sqldelight = "2.0.2"
+junit = "4.13.2"
+
+[libraries]
+kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
+kotlin-testJunit = { module = "org.jetbrains.kotlin:kotlin-test-junit", version.ref = "kotlin" }
+junit = { module = "junit:junit", version.ref = "junit" }
+kotlinx-coroutinesSwing = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-swing", version.ref = "kotlinxCoroutines" }
+kotlinx-coroutinesCore = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinxCoroutines" }
+kotlinx-coroutinesTest = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "kotlinxCoroutines" }
+androidx-lifecycle-viewmodelCompose = { module = "org.jetbrains.androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "androidxLifecycle" }
+androidx-lifecycle-runtimeCompose = { module = "org.jetbrains.androidx.lifecycle:lifecycle-runtime-compose", version.ref = "androidxLifecycle" }
+sqldelight-sqliteDriver = { module = "app.cash.sqldelight:sqlite-driver", version.ref = "sqldelight" }
+sqldelight-coroutinesExtensions = { module = "app.cash.sqldelight:coroutines-extensions", version.ref = "sqldelight" }
+sqldelight-sqliteDialect324 = { module = "app.cash.sqldelight:sqlite-3-24-dialect", version.ref = "sqldelight" }
+
+[plugins]
+kotlinMultiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
+kotlinJvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
+composeMultiplatform = { id = "org.jetbrains.compose", version.ref = "composeMultiplatform" }
+composeCompiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+composeHotReload = { id = "org.jetbrains.compose.hot-reload", version.ref = "composeHotReload" }
+sqldelight = { id = "app.cash.sqldelight", version.ref = "sqldelight" }
+```
+
+### `core-api/build.gradle.kts`
+
+```kotlin
+plugins {
+    alias(libs.plugins.kotlinJvm)
+    alias(libs.plugins.composeMultiplatform)
+    alias(libs.plugins.composeCompiler)
+}
+
+dependencies {
+    api(libs.kotlinx.coroutinesCore)
+    api(compose.runtime)
+    api(compose.ui)
+    testImplementation(libs.kotlin.test)
+    testImplementation(libs.junit)
+}
+```
+
+`api` (not `implementation`) for coroutines/compose because `LogRepository` exposes `Flow<…>` and `UIPlugin.content` exposes `Modifier`/`@Composable` in its public surface.
+
+### `database/build.gradle.kts`
+
+```kotlin
+plugins {
+    alias(libs.plugins.kotlinJvm)
+    alias(libs.plugins.sqldelight)
+}
+
+dependencies {
+    implementation(project(":core-api"))
+    implementation(libs.kotlinx.coroutinesCore)
+    implementation(libs.sqldelight.sqliteDriver)
+    implementation(libs.sqldelight.coroutinesExtensions)
+    testImplementation(libs.kotlin.test)
+    testImplementation(libs.junit)
+    testImplementation(libs.kotlinx.coroutinesTest)
+}
+
+sqldelight {
+    databases {
+        create("LogHoundDb") {
+            packageName.set("com.roideuniverse.loghound.database.sqldelight")
+        }
+    }
+}
+```
+
+### `core-impl/build.gradle.kts`
+
+```kotlin
+plugins {
+    alias(libs.plugins.kotlinJvm)
+}
+
+dependencies {
+    implementation(project(":core-api"))
+    implementation(project(":database"))
+    implementation(libs.kotlinx.coroutinesCore)
+    testImplementation(libs.kotlin.test)
+    testImplementation(libs.junit)
+    testImplementation(libs.kotlinx.coroutinesTest)
+}
+```
+
+### `plugins/ui/<name>/build.gradle.kts` (UI plugin)
+
+Base recipe — apply SQLDelight only if the plugin owns its own DB.
+
+```kotlin
+plugins {
+    alias(libs.plugins.kotlinJvm)
+    alias(libs.plugins.composeMultiplatform)
+    alias(libs.plugins.composeCompiler)
+    // Optional: include if the plugin owns a DB
+    alias(libs.plugins.sqldelight)
+}
+
+dependencies {
+    implementation(project(":core-api"))
+    implementation(compose.runtime)
+    implementation(compose.foundation)
+    implementation(compose.material3)
+    implementation(compose.ui)
+    implementation(libs.kotlinx.coroutinesCore)
+    // Optional: include if the plugin owns a DB
+    implementation(libs.sqldelight.sqliteDriver)
+    testImplementation(libs.kotlin.test)
+    testImplementation(libs.junit)
+}
+
+// Only include this block if the plugin owns a DB.
+sqldelight {
+    databases {
+        create("<PluginName>Db") {
+            packageName.set("com.roideuniverse.loghound.plugins.<id>.sqldelight")
+            // Only include `dialect(...)` if the schema uses ON CONFLICT … DO UPDATE
+            // (UPSERT, requires SQLite 3.24+).
+            dialect(libs.sqldelight.sqliteDialect324)
+        }
+    }
+}
+```
+
+### `plugins/data/<name>/build.gradle.kts` (data plugin, no UI)
+
+```kotlin
+plugins {
+    alias(libs.plugins.kotlinJvm)
+}
+
+dependencies {
+    implementation(project(":core-api"))
+    implementation(libs.kotlinx.coroutinesCore)
+    testImplementation(libs.kotlin.test)
+    testImplementation(libs.junit)
+}
+```
+
+### `app/build.gradle.kts`
+
+```kotlin
+import org.jetbrains.compose.desktop.application.dsl.TargetFormat
+
+plugins {
+    alias(libs.plugins.kotlinMultiplatform)
+    alias(libs.plugins.composeMultiplatform)
+    alias(libs.plugins.composeCompiler)
+    alias(libs.plugins.composeHotReload)
+}
+
+kotlin {
+    jvm()
+
+    sourceSets {
+        commonMain.dependencies {
+            implementation(project(":core-api"))
+            implementation(project(":database"))
+            implementation(project(":core-impl"))
+            implementation(project(":plugins:ui:log-viewer"))
+            implementation(project(":plugins:ui:uuid-grouping"))
+            implementation(project(":plugins:data:logcat"))
+            implementation(project(":plugins:data:synthetic"))
+            implementation(compose.runtime)
+            implementation(compose.foundation)
+            implementation(compose.material3)
+            implementation(compose.ui)
+            implementation(libs.kotlinx.coroutinesCore)
+            implementation(libs.androidx.lifecycle.viewmodelCompose)
+            implementation(libs.androidx.lifecycle.runtimeCompose)
+        }
+        commonTest.dependencies {
+            implementation(libs.kotlin.test)
+        }
+        jvmMain.dependencies {
+            implementation(compose.desktop.currentOs)
+            implementation(libs.kotlinx.coroutinesSwing)
+        }
+        jvmTest.dependencies {
+            implementation(compose.desktop.uiTestJUnit4)
+            implementation(compose.desktop.currentOs)
+            implementation(libs.kotlinx.coroutinesTest)
+            implementation(libs.junit)
+        }
+    }
+}
+
+compose.desktop {
+    application {
+        mainClass = "com.roideuniverse.loghound.MainKt"
+
+        nativeDistributions {
+            targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
+            packageName = "LogHound"
+            packageVersion = "1.0.0"
+            macOS {
+                bundleID = "com.roideuniverse.loghound"
+            }
+        }
+    }
+}
+```
+
+### `settings.gradle.kts`
+
+```kotlin
+rootProject.name = "LogHound"
+enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
+
+pluginManagement { /* google() + mavenCentral() + gradlePluginPortal() */ }
+dependencyResolutionManagement { /* google() + mavenCentral() */ }
+
+plugins {
+    id("org.gradle.toolchains.foojay-resolver-convention") version "1.0.0"
+}
+
+include(":core-api")
+include(":database")
+include(":core-impl")
+include(":app")
+include(":plugins:ui:log-viewer")
+include(":plugins:ui:uuid-grouping")
+include(":plugins:data:logcat")
+include(":plugins:data:synthetic")
+```
+
+---
+
+## Appendix B — SQL schemas (literal `.sq` files)
+
+The project has two SQLDelight schemas — one for the main logs database, one for UUID Grouping's per-plugin database. Both are reproduced verbatim below so a regeneration that re-runs SQLDelight's annotation processor produces identical generated query classes. SQLDelight will fail the build if the generated Kotlin doesn't match these `.sq` files exactly, so any drift surfaces immediately.
+
+### `database/src/main/sqldelight/com/roideuniverse/loghound/database/sqldelight/Logs.sq`
+
+```sql
+CREATE TABLE logs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+    timestamp TEXT NOT NULL,
+    pid INTEGER NOT NULL,
+    tid INTEGER NOT NULL,
+    priority TEXT NOT NULL,
+    tag TEXT NOT NULL,
+    message TEXT NOT NULL,
+    package_name TEXT
+);
+
+CREATE INDEX logs_timestamp ON logs(timestamp);
+CREATE INDEX logs_tag ON logs(tag);
+CREATE INDEX logs_priority ON logs(priority);
+CREATE INDEX logs_pid ON logs(pid);
+CREATE INDEX logs_package_name ON logs(package_name);
+
+insert:
+INSERT INTO logs(timestamp, pid, tid, priority, tag, message, package_name)
+VALUES (?, ?, ?, ?, ?, ?, ?);
+
+selectTail:
+SELECT *
+FROM logs
+ORDER BY id DESC
+LIMIT :lim;
+
+selectBefore:
+SELECT *
+FROM logs
+WHERE id < :beforeId
+ORDER BY id DESC
+LIMIT :lim;
+
+selectAfter:
+SELECT *
+FROM logs
+WHERE id > :afterId
+ORDER BY id ASC
+LIMIT :lim;
+
+countAll:
+SELECT COUNT(*) FROM logs;
+
+lastInsertRowid:
+SELECT last_insert_rowid();
+```
+
+`pid` and `tid` are stored as `INTEGER` (Long in Kotlin) and converted at the `LogDataStore` boundary — the spec deliberately avoids `INTEGER AS Int` because that triggers a SQLDelight column-adapter requirement that complicates the driver wiring.
+
+### `plugins/ui/uuid-grouping/src/main/sqldelight/com/roideuniverse/loghound/plugins/uuidgrouping/sqldelight/Uuids.sq`
+
+```sql
+CREATE TABLE uuids (
+    uuid TEXT PRIMARY KEY NOT NULL,
+    count INTEGER NOT NULL,
+    first_log_id INTEGER NOT NULL,
+    last_log_id INTEGER NOT NULL
+);
+
+CREATE INDEX uuids_count_desc ON uuids(count DESC);
+
+CREATE TABLE meta (
+    key TEXT PRIMARY KEY NOT NULL,
+    value TEXT NOT NULL
+);
+
+upsert:
+INSERT INTO uuids(uuid, count, first_log_id, last_log_id)
+VALUES (:uuid, :delta, :logId, :logId)
+ON CONFLICT(uuid) DO UPDATE SET
+    count = count + :delta,
+    last_log_id = MAX(last_log_id, :logId);
+
+countAll:
+SELECT COUNT(*) FROM uuids;
+
+selectByCountDesc:
+SELECT * FROM uuids
+WHERE uuid LIKE :search || '%'
+ORDER BY count DESC, uuid ASC
+LIMIT :lim OFFSET :off;
+
+selectByUuidAsc:
+SELECT * FROM uuids
+WHERE uuid LIKE :search || '%'
+ORDER BY uuid ASC
+LIMIT :lim OFFSET :off;
+
+countMatching:
+SELECT COUNT(*) FROM uuids WHERE uuid LIKE :search || '%';
+
+getMeta:
+SELECT value FROM meta WHERE key = :key;
+
+setMeta:
+INSERT INTO meta(key, value) VALUES (:key, :value)
+ON CONFLICT(key) DO UPDATE SET value = :value;
+```
+
+The UPSERT clauses require the SQLite 3.24 dialect (see Appendix A → plugin `build.gradle.kts`).
+
+---
+
+## Appendix C — Regex patterns (literal)
+
+Three regular expressions the running code leans on. They're pinned here because rewording them in prose loses subtleties (whitespace handling, non-greedy groups, the optional space after the colon in the threadtime parser) that change the behavior of every log line we ingest.
+
+### Logcat threadtime parser (`plugins/data/logcat`)
+
+```regex
+^(\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}\.\d{3})\s+(\d+)\s+(\d+)\s+([VDIWEFS])\s+([^:]+?):\s?(.*)$
+```
+
+Capture groups, in order: `timestamp`, `pid`, `tid`, `priority` (single-char label), `tag`, `message`. The tag is non-greedy (`[^:]+?`) and a single optional space after the colon (`\s?`) is consumed; the resulting tag is then `.trim()`-ed in Kotlin to strip incidental whitespace around the colon. Lines that don't match return `null` from the parser and are silently dropped (counted, not crashed).
+
+### UUID extractor (`plugins/ui/uuid-grouping`)
+
+```regex
+[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}
+```
+
+A pre-filter skips the regex entirely on messages that contain no `'-'` character (the common case for logcat lines), since a UUID requires hyphens. Returned UUIDs are normalised to lowercase via `String.lowercase()` so that `AAA…` and `aaa…` collapse onto a single key.
+
+### Filter query parser (`plugins/ui/log-viewer`)
+
+Tokenization:
+- Whitespace splits tokens, except inside double-quoted spans.
+- Double quotes are removed from the token but allow embedded whitespace.
+- Tokens are processed in order; output `LogFilter` keeps the first value seen per key.
+
+Per-token rules:
+- If the token has a `:` after position 0 and before its last char, split into `key` (lowercased) + `value`.
+- Recognized keys: `tag`, `level`, `pid`, `tid`, `package`. Unknown keys fall through to free text (the whole token is appended).
+- `level` value is parsed as a single uppercase letter (`V`/`D`/`I`/`W`/`E`/`F`/`S`) via `LogPriority.fromLabel`; failing that, by enum name (case-insensitive). On failure the whole token falls through to free text.
+- `pid` and `tid` values must parse via `Int.toIntOrNull()`. Failures fall through to free text.
+- All other recognized clauses set their respective `LogFilter` field.
+
+Free-text handling:
+- All non-clause tokens are joined with a single space.
+- If the joined string starts with `/`, it is treated as a regex: leading `/` is stripped, a trailing `/` if present is also stripped, the remainder becomes `regexSearch`. Empty post-strip strings are dropped.
+- Otherwise the joined string becomes `textSearch`. Empty strings are dropped.
+
+---
+
+## Appendix D — Numeric configuration
+
+The constants the code actually uses, gathered in one place so they don't have to be hunted through plugin source files. Most of these are choices we made by feel and then froze — there's nothing magic about a 200ms refresh interval or a 100-line flush batch, but changing them changes user-visible behavior, so we treat them as part of the spec.
+
+### Storage paths
+- Main logs DB: `~/.loghound/logs.db`
+- Per-plugin DB: `~/.loghound/plugins/<plugin-id>.db`
+- WAL mode: enabled. `synchronous = NORMAL`.
+
+### `LogRepositoryImpl`
+- Default `query` limit: 200
+- Default `MutableSharedFlow.extraBufferCapacity` for `ingested`: 64
+- Page size used by `count(non-empty filter)` while streaming through the cursor: 1,000
+
+### `LogViewerPlugin`
+- Initial query limit on tab open / filter change: 500
+- "At-bottom" auto-scroll-resume threshold: visible last item index ≥ entries.lastIndex − 2
+
+### `LogcatDataPlugin`
+- Flush batch size: 100 lines
+- Retry interval after no devices / disconnect: 2,000 ms
+- ADB resolver order:
+  1. `$ANDROID_HOME/platform-tools/adb`
+  2. `$ANDROID_SDK_ROOT/platform-tools/adb`
+  3. `~/Library/Android/sdk/platform-tools/adb` (macOS default)
+  4. `adb` (rely on `PATH`)
+- ADB device picker: first device whose `adb devices` line ends with `\tdevice` (skips `unauthorized` / `offline`).
+
+### `SyntheticDataPlugin`
+- UUID pool size: 100 (generated at startup with `UUID.randomUUID()`)
+- Batch size: 20 entries
+- Batch interval: 200 ms (≈100 lines/sec)
+- Priority distribution (uniform random in `[0,100)`):
+  - Info: r < 35
+  - Debug: 35 ≤ r < 65
+  - Verbose: 65 ≤ r < 85
+  - Warn: 85 ≤ r < 95
+  - Error: 95 ≤ r < 99
+  - Fatal: r ≥ 99
+- 60% of messages embed a UUID. The chosen index is `floor(r² × poolSize)` where r is uniform in `[0,1)`, clamped to `[0, poolSize − 1]` — produces a hot-tail distribution where a small number of UUIDs are heavily reused.
+- Tag pool: `ActivityManager`, `GLThread`, `Choreographer`, `InputDispatcher`, `MyApp`, `OkHttp`, `WorkManager`, `Camera2`, `AudioFlinger`, `Zygote`.
+- PID pool: `2031, 4127, 8543, 12044, 15877`. `tid = pid + (random.nextInt(8))`.
+- Package mapping: see Appendix in `behavior.spec.md`.
+- Message templates: see Appendix in `behavior.spec.md`.
+
+### `UuidGroupingPlugin`
+- Backfill scan `PAGE_SIZE`: 1,000
+- Visible UUID list `VISIBLE_LIMIT`: 200 rows
+- DB → UI refresh interval: 500 ms
+- Checkpoint key in `meta` table: `last_scanned_log_id`
+
+### `UuidDetailController`
+- Initial query: `repository.query(filter = LogFilter(textSearch = uuid), limit = 500)`
+- "At-bottom" auto-scroll threshold: same rule as LogViewer
+
+### Compose Desktop / native distribution
+- macOS bundle ID: `com.roideuniverse.loghound`
+- Display name: `LogHound`
+- Distribution formats: `Dmg, Msi, Deb`
+
+---
+
+## Appendix E — Test architecture
+
+The test suite is organized in three layers and uses no mocks anywhere — every test runs against real SQLite (in a per-test temp directory) and, where it's a UI test, against the real Compose composables. The layers below are listed in increasing fidelity to a real running app:
+
+1. **Unit tests** — pure functions, no I/O. Live in each module's `src/test/kotlin/...`. Examples: `LogcatThreadtimeParserTest`, `UuidExtractorTest`, `LogFilterTest`, `FilterQueryParserTest`.
+2. **Integration tests** — exercise contracts against real dependencies (real SQLite via JUnit's `TemporaryFolder` rule). No fakes, no mocks anywhere in the suite. Examples: `SqlDelightLogDataStoreTest`, `LogRepositoryImplTest`. A stress test (`LogRepositoryStressTest`) drives 100K entries through the real `LogRepositoryImpl`.
+3. **End-to-end tests** — render the actual plugin Compose UI via `createComposeRule()`, drive deterministic data through the real `LogRepositoryImpl + LogDataStore`, observe the semantics tree, exercise scrolling/filtering/sub-tab open. Live in `app/src/jvmTest/kotlin/.../e2e/`. Examples: `LogViewerE2eTest`, `UuidGroupingE2eTest`. Each E2E test cross-checks that UI state equals repository state.
+
+### Determinism rules (apply to every test layer)
+- No `delay`, no `Thread.sleep`, no real-clock reads, no polling.
+- For UI tests: use `composeTestRule.waitUntil { predicate }` for any async wait. Never assert "exactly N rows visible" because `LazyColumn` only realises the visible viewport.
+- For coroutine tests touching `MutableSharedFlow`: use `kotlinx.coroutines.test.UnconfinedTestDispatcher()` as `runTest`'s dispatcher. The default `StandardTestDispatcher` parks subscribers and creates `UncompletedCoroutinesError`.
+- Drive *known* payloads via `repository.append(fixedList)`. No `Random` in test inputs unless seeded with a fixed seed.
+- Per-test SQLite isolation via `TemporaryFolder` — every test gets a fresh `~/<tmp>/logs.db` and its own per-plugin DB directory.
+
+### UI test tags
+
+Tags are defined in plugin-internal `TestTags` / `UuidTestTags` objects. They are part of the public surface for tests; renaming requires updating tests.
+
+**Log Viewer** (`plugins/ui/log-viewer/.../TestTags.kt`):
+- `logViewer.logList` — the `LazyColumn` holding log rows
+- `logViewer.logRow` — each rendered row
+- `logViewer.filterInput` — the filter `BasicTextField`
+- `logViewer.jumpToBottom` — the floating Jump-to-bottom `Button`
+
+**UUID Grouping** (`plugins/ui/uuid-grouping/.../UuidTestTags.kt`):
+- `uuidGrouping.uuidList` — the master `LazyColumn`
+- `uuidGrouping.uuidRow` — each UUID row in the master list
+- `uuidGrouping.tab` — every sub-tab in the strip (master + per-UUID detail tabs)
+- `uuidGrouping.tabClose` — the `✕` inside non-master sub-tabs
+- `uuidGrouping.detailList` — the `LazyColumn` inside a UUID detail sub-tab
+- `uuidGrouping.detailRow` — each row in the detail list
+
+### Test commands
+
+- Full suite: `./gradlew test` (runs all unit + integration + E2E).
+- Just E2E: `./gradlew :app:jvmTest`.
+- Single class: `./gradlew :app:jvmTest --tests "com.roideuniverse.loghound.e2e.LogViewerE2eTest"`.
