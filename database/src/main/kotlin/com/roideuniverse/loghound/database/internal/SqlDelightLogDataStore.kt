@@ -10,8 +10,9 @@ internal class SqlDelightLogDataStore(private val db: LogHoundDb) : LogDataStore
 
     private val queries get() = db.logsQueries
 
-    override suspend fun insert(batch: List<LogEntry>) {
-        if (batch.isEmpty()) return
+    override suspend fun insert(batch: List<LogEntry>): List<LogEntry> {
+        if (batch.isEmpty()) return emptyList()
+        var lastId = 0L
         db.transaction {
             for (entry in batch) {
                 queries.insert(
@@ -24,7 +25,13 @@ internal class SqlDelightLogDataStore(private val db: LogHoundDb) : LogDataStore
                     package_name = entry.packageName,
                 )
             }
+            lastId = queries.lastInsertRowid().executeAsOne()
         }
+        // SQLite's auto-increment assigns ids monotonically within a transaction with
+        // no concurrent writers, so the inserted ids form a contiguous range ending at
+        // `lastId` of size `batch.size`.
+        val firstId = lastId - batch.size + 1
+        return batch.mapIndexed { i, entry -> entry.copy(id = firstId + i) }
     }
 
     override suspend fun selectTail(limit: Int): List<LogEntry> =

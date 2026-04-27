@@ -18,8 +18,11 @@ class LogRepositoryImpl(
 
     override suspend fun append(batch: List<LogEntry>) {
         if (batch.isEmpty()) return
-        dataStore.insert(batch)
-        _ingested.emit(batch)
+        // insert() returns the entries populated with their auto-assigned ids.
+        // Subscribers of `ingested` need real ids — without them, UI keys (LazyColumn)
+        // collide and Compose throws "key 0 was already used".
+        val withIds = dataStore.insert(batch)
+        _ingested.emit(withIds)
     }
 
     override suspend fun query(
