@@ -13,28 +13,31 @@ Behavior spec describes *what*. Coding spec describes *how*. They do not overlap
 
 ## Architecture
 
-- Everything visual is a plugin, including the core log viewer
-- The core is headless: input layer → ingester → SQLite storage → plugin framework
-- Plugins are compiled-in Kotlin modules, not runtime-loaded
-- Memory usage must stay under 250MB regardless of log volume
+- Everything visual is a `UIPlugin`; everything that produces log data is a `DataPlugin`. Both live alongside core.
+- Core layers: `core-api` (interfaces + domain) → `database` (SQLDelight + `LogDataStore`) → `core-impl` (`LogRepositoryImpl`) → plugins read/write through `LogRepository` (or `LogDataStore` for raw access).
+- Plugins are compiled-in Kotlin modules, not runtime-loaded.
+- Memory usage must stay under 250MB regardless of log volume.
 
 ## Project structure
 
 Multi-module Gradle project:
 
-- `core/` — data models, input abstraction, parser, storage, ingester, plugin API. No UI dependencies.
-- `plugins/` — each plugin is its own module depending on core. Contains plugin logic and UI.
-- `app/` — desktop application shell. Depends on core and all plugins. Wires everything together.
+- `core-api/` — domain interfaces & models (`LogRepository`, `UIPlugin`, `DataPlugin`, `LogEntry`, `LogFilter`, `LogPage`, `LogPriority`).
+- `database/` — SQLDelight schema and `LogDataStore` interface + impl. Plugins needing raw cursor access depend on this.
+- `core-impl/` — `LogRepositoryImpl` and other non-persistence implementations.
+- `app/` — DI/wiring, window shell, tab management.
+- `plugins/ui/<name>/` — one `UIPlugin` per module.
+- `plugins/data/<name>/` — one `DataPlugin` per module (e.g. logcat).
 
 ## Key constraints
 
-- core has no UI dependencies
-- Plugins depend on core, never on each other
-- All database queries must be paginated — no unbounded result sets
-- Parser errors skip and continue, never crash
-- Plugin exceptions are caught by core — a crashing plugin does not take down the app
-- Ingester runs on a background thread, never blocks the UI
-- Memory is proportional to viewport, not dataset size
+- `core-api` has no UI dependencies beyond Compose runtime/UI types required by `UIPlugin`.
+- Plugins depend only on `core-api` (and `database` if they need raw access). Never on other plugins or on `app`.
+- All database queries must be paginated — no unbounded result sets.
+- Parser errors skip and continue, never crash.
+- Plugin exceptions are caught by core — a crashing plugin does not take down the app.
+- Data plugins run on a background dispatcher; they never block the UI.
+- Memory is proportional to viewport, not dataset size.
 
 ## Build and run
 
