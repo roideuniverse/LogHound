@@ -13,7 +13,6 @@ import com.roideuniverse.loghound.core.impl.LogRepositoryImpl
 import com.roideuniverse.loghound.database.createLogDataStore
 import com.roideuniverse.loghound.plugins.logcat.LogcatDataPlugin
 import com.roideuniverse.loghound.plugins.logviewer.LogViewerPlugin
-import com.roideuniverse.loghound.plugins.synthetic.SyntheticDataPlugin
 import com.roideuniverse.loghound.plugins.uuidgrouping.UuidGroupingPlugin
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -34,11 +33,7 @@ fun main() = application {
         )
     }
 
-    val dataPlugins: List<DataPlugin> = remember {
-        // SyntheticDataPlugin() is commented out so only real device logs flow in.
-        // Re-enable by adding it back to the list.
-        listOf(LogcatDataPlugin(), /* SyntheticDataPlugin(), */ uuidGrouping)
-    }
+    val dataPlugins: List<DataPlugin> = remember { listOf(LogcatDataPlugin(), uuidGrouping) }
     val uiPlugins: List<UIPlugin> = remember { listOf(LogViewerPlugin(repository), uuidGrouping) }
 
     val backgroundScope = remember { CoroutineScope(SupervisorJob() + Dispatchers.IO) }

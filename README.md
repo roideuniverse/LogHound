@@ -28,7 +28,6 @@ To build only one module:
 ./gradlew :plugins:ui:log-viewer:assemble
 ./gradlew :plugins:ui:uuid-grouping:assemble
 ./gradlew :plugins:data:logcat:assemble
-./gradlew :plugins:data:synthetic:assemble
 ```
 
 ## Run the app
@@ -131,7 +130,6 @@ app/                            DI/wiring, window shell, tab management
 plugins/ui/log-viewer/          tail-style log view with filter bar
 plugins/ui/uuid-grouping/       UUID discovery + counts; owns its own SQLite file
 plugins/data/logcat/            real `adb logcat -v threadtime` source
-plugins/data/synthetic/         synthetic test/demo data source
 specs/                          source of truth — read these before changing code
 ```
 

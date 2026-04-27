@@ -149,7 +149,7 @@ An analytical discovery tool that finds all UUID-shaped strings across the logs 
 
 The sub-tab labels show the first 8 characters of the UUID followed by `…`. The "UUIDs" sub-tab is always the leftmost and returns to the master list.
 
-The detail view is implemented today via `LogRepository.query(filter = LogFilter(textSearch = uuid))` which scans cursor-paginated pages and matches in Kotlin. This is fine for synthetic data and single-device sessions; for huge logs (10M+ lines) a future full-text-search index on the main logs DB will make drill-down sub-millisecond. Adding that FTS index is a performance follow-up — it doesn't change UX.
+The detail view is implemented today via `LogRepository.query(filter = LogFilter(textSearch = uuid))` which scans cursor-paginated pages and matches in Kotlin. This is fine for short and medium sessions; for huge logs (10M+ lines) a future full-text-search index on the main logs DB will make drill-down sub-millisecond. Adding that FTS index is a performance follow-up — it doesn't change UX.
 
 **Scale targets:**
 - Must remain responsive at **≥ 100,000 unique UUIDs** with **≥ 50,000,000 ingested log lines** scanned (e.g. 100K UUIDs × ~500 occurrences each).
@@ -159,12 +159,6 @@ The detail view is implemented today via `LogRepository.query(filter = LogFilter
 **Detail tab loading state:** opening a UUID detail sub-tab shows a small loading indicator centered in the panel while the initial query runs against the logs database. Once the query completes the panel switches to either the list of matching log lines (sorted chronologically, with live updates appended as new matches arrive) or, if zero rows matched, a quiet "No log lines for this UUID" empty-state message. Live updates continue to populate the list in both cases — if the empty state turns up a match later, the list takes over.
 
 **Use case:** A developer's app uses UUIDs as correlation IDs for operations, sessions, or requests. This plugin lets them instantly see all operations, how many log lines each produced, and drill into any one to follow its lifecycle through the logs.
-
-### Synthetic data (development convenience)
-
-For working on LogHound itself without a connected device, a built-in synthetic data source produces realistic-looking logcat lines at about 100 per second. The data deliberately includes a small reusable pool of UUIDs distributed unevenly — a handful are "hot" with many occurrences, most are rare — so the UUID Grouping plugin has interesting structure to reveal even on a fresh database.
-
-Synthetic data is on by default during development; in real-device sessions you turn it off. The exact tag pool, message templates, and randomness knobs are pinned in the coding spec (Appendix D) so the demo data stays reproducible across regenerations.
 
 ---
 

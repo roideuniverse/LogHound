@@ -19,7 +19,7 @@ The project is a multi-module Gradle project. Confirmed modules:
 - **core-impl** — non-persistence implementations of `core-api` contracts. Currently: `LogRepositoryImpl` (wraps a `LogDataStore`). Other future cross-cutting implementations land here. Depends on `core-api` and `database`. Plugins do **not** depend on this module.
 - **app** — DI/wiring layer. Assembles and connects implementations, registers plugins, owns the window shell, tab management, and theme. Depends on `core-api`, `database`, `core-impl`, and on each registered plugin module.
 - **plugins/ui/&lt;plugin-name&gt;** — one Gradle module per **UI** plugin (e.g. `plugins/ui/log-viewer`). Each module contains exactly one `UIPlugin` implementation plus its private supporting code.
-- **plugins/data/&lt;plugin-name&gt;** — one Gradle module per **data** plugin (e.g. `plugins/data/logcat`, `plugins/data/synthetic`). Each module contains exactly one `DataPlugin` implementation — the source-reading + parsing + batching code that produces `LogEntry` and writes them to `LogRepository`. The `synthetic` plugin is a built-in test/demo source: it generates realistic-looking logcat lines including a reusable pool of UUIDs, so the ingest pipeline and analysis plugins (UUID Grouping, etc.) can be exercised end-to-end without a connected Android device.
+- **plugins/data/&lt;plugin-name&gt;** — one Gradle module per **data** plugin (e.g. `plugins/data/logcat`). Each module contains exactly one `DataPlugin` implementation — the source-reading + parsing + batching code that produces `LogEntry` and writes them to `LogRepository`.
 
 **Plugin module rules** (apply to both `plugins/ui/*` and `plugins/data/*`):
 - A plugin module depends only on `core-api` (and `database` if it needs raw cursor access).
@@ -526,7 +526,6 @@ kotlin {
             implementation(project(":plugins:ui:log-viewer"))
             implementation(project(":plugins:ui:uuid-grouping"))
             implementation(project(":plugins:data:logcat"))
-            implementation(project(":plugins:data:synthetic"))
             implementation(compose.runtime)
             implementation(compose.foundation)
             implementation(compose.material3)
@@ -587,7 +586,6 @@ include(":app")
 include(":plugins:ui:log-viewer")
 include(":plugins:ui:uuid-grouping")
 include(":plugins:data:logcat")
-include(":plugins:data:synthetic")
 ```
 
 ---
@@ -806,23 +804,6 @@ The constants the code actually uses, gathered in one place so they don't have t
 - ADB resolver order: same as `LogcatDataPlugin` above (the Log Viewer module duplicates the resolver code locally; will be extracted to a shared helper on third use).
 - Result row limit: no explicit cap; the device's `pm list packages` output is small enough (~hundreds of rows max).
 - Empty/no-device response: the Find button surfaces "No device" inline; the lookup returns an empty list rather than throwing.
-
-### `SyntheticDataPlugin`
-- UUID pool size: 100 (generated at startup with `UUID.randomUUID()`)
-- Batch size: 20 entries
-- Batch interval: 200 ms (≈100 lines/sec)
-- Priority distribution (uniform random in `[0,100)`):
-  - Info: r < 35
-  - Debug: 35 ≤ r < 65
-  - Verbose: 65 ≤ r < 85
-  - Warn: 85 ≤ r < 95
-  - Error: 95 ≤ r < 99
-  - Fatal: r ≥ 99
-- 60% of messages embed a UUID. The chosen index is `floor(r² × poolSize)` where r is uniform in `[0,1)`, clamped to `[0, poolSize − 1]` — produces a hot-tail distribution where a small number of UUIDs are heavily reused.
-- Tag pool: `ActivityManager`, `GLThread`, `Choreographer`, `InputDispatcher`, `MyApp`, `OkHttp`, `WorkManager`, `Camera2`, `AudioFlinger`, `Zygote`.
-- PID pool: `2031, 4127, 8543, 12044, 15877`. `tid = pid + (random.nextInt(8))`.
-- Package mapping: see Appendix in `behavior.spec.md`.
-- Message templates: see Appendix in `behavior.spec.md`.
 
 ### `UuidGroupingPlugin`
 - Backfill scan `PAGE_SIZE`: 1,000

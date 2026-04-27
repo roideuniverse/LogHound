@@ -18,7 +18,6 @@ kotlin {
             implementation(project(":plugins:ui:log-viewer"))
             implementation(project(":plugins:ui:uuid-grouping"))
             implementation(project(":plugins:data:logcat"))
-            implementation(project(":plugins:data:synthetic"))
             implementation(compose.runtime)
             implementation(compose.foundation)
             implementation(compose.material3)
