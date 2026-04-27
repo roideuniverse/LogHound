@@ -4,6 +4,7 @@ import androidx.compose.foundation.VerticalScrollbar
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -36,6 +37,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -61,6 +63,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.withContext
 import java.io.File
 
@@ -159,9 +162,9 @@ class UuidGroupingPlugin(
         fun openDetail(uuid: String) {
             if (uuid !in openedUuids) {
                 openedUuids.add(uuid)
-                val controller = UuidDetailController(uuid)
+                val controller = UuidDetailController(uuid, repository)
                 controllers[uuid] = controller
-                controller.start(coroutineScope, repository)
+                controller.start(coroutineScope)
             }
             activeUuid = uuid
         }
@@ -389,12 +392,30 @@ private fun DetailEmpty() {
 
 @Composable
 private fun DetailList(controller: UuidDetailController) {
+    // Trigger load-older when the user scrolls within ~10 rows of the top.
+    LaunchedEffect(controller) {
+        snapshotFlow { controller.listState.firstVisibleItemIndex }
+            .distinctUntilChanged()
+            .collect { firstVisible ->
+                if (firstVisible <= LOAD_OLDER_THRESHOLD &&
+                    !controller.loadingOlder &&
+                    !controller.olderExhausted &&
+                    controller.entries.isNotEmpty()
+                ) {
+                    controller.loadOlder()
+                }
+            }
+    }
+
     Box(modifier = Modifier.fillMaxSize()) {
         SelectionContainer(modifier = Modifier.fillMaxSize()) {
             LazyColumn(
                 state = controller.listState,
                 modifier = Modifier.fillMaxSize().testTag(UuidTestTags.UUID_DETAIL_LIST),
             ) {
+                if (controller.loadingOlder) {
+                    item(key = "loadingOlder") { LoadingOlderRow(UuidTestTags.UUID_DETAIL_LOADING_OLDER) }
+                }
                 items(items = controller.entries, key = { it.id }) { entry -> DetailLogRow(entry) }
             }
         }
@@ -404,6 +425,21 @@ private fun DetailList(controller: UuidDetailController) {
         )
     }
 }
+
+@Composable
+private fun LoadingOlderRow(testTag: String) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp).testTag(testTag),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center,
+    ) {
+        CircularProgressIndicator(strokeWidth = 2.dp, modifier = Modifier.width(14.dp))
+        Spacer(Modifier.width(8.dp))
+        Text("Loading older…", color = Color(0xFF888888), style = TextStyle(fontSize = 12.sp))
+    }
+}
+
+private const val LOAD_OLDER_THRESHOLD = 10
 
 @Composable
 private fun UuidList(rows: List<Uuids>, onUuidClick: (String) -> Unit) {

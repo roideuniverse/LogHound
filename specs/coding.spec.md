@@ -279,6 +279,15 @@ The same color mapping is used in both Log Viewer and UUID detail views. The imp
 - A floating button appears at the bottom-right of the log list whenever the user is not within ~2 rows of the tail.
 - Tapping scrolls to the most recent entry. Subsequent ingested batches resume auto-scrolling because the user is now at the tail.
 
+**Load-older-on-scroll (Log Viewer and UUID detail sub-tabs):**
+
+- Trigger: the first visible row index is within `LOAD_OLDER_THRESHOLD` of the start of the in-memory list. The threshold is small (10 rows) so the fetch starts before the user reaches the very top.
+- Fetch: `LogRepository.query(filter = activeFilter, beforeId = entries.first().id, limit = LOAD_OLDER_PAGE_SIZE)` where the page size is 500.
+- Result: prepend the returned entries to the in-memory list. `LazyColumn` with stable item keys preserves the visible scroll position across the prepend.
+- While the fetch is in flight an `loadingOlder` flag is true; an item is rendered at index 0 of the `LazyColumn` showing a small "Loading older…" indicator. Reentry is guarded by the flag so concurrent triggers collapse into a single fetch.
+- Exhaustion: when a fetch returns zero entries, an `olderExhausted` flag flips on and the trigger stops firing for the rest of the session (or until the filter changes, which resets it).
+- For the Log Viewer, the state lives in `LogViewerPlugin.content`. For the UUID detail sub-tabs, the state lives on `UuidDetailController` (`loadingOlder`, `olderExhausted`, `loadOlder()`); the controller takes the `LogRepository` in its constructor so `loadOlder()` doesn't need it as a parameter.
+
 **UUID Grouping sub-tab UI:**
 
 Inside the UUID Grouping panel:
@@ -814,6 +823,8 @@ The constants the code actually uses, gathered in one place so they don't have t
 ### `UuidDetailController`
 - Initial query: `repository.query(filter = LogFilter(textSearch = uuid), limit = 500)`
 - "At-bottom" auto-scroll threshold: same rule as LogViewer
+- Load-older trigger threshold: 10 rows from the top of the in-memory list
+- Load-older page size: 500 entries
 
 ### Compose Desktop / native distribution
 - macOS bundle ID: `com.roideuniverse.loghound`
@@ -851,6 +862,7 @@ Tags are defined in plugin-internal `TestTags` / `UuidTestTags` objects. They ar
 - `logViewer.packageLookupResultRow` — each `(package, uid)` result row
 - `logViewer.packageLookupCopyPackage` — per-row "Copy `package:…`" action
 - `logViewer.packageLookupCopyUid` — per-row "Copy `--uid=…`" action
+- `logViewer.loadingOlder` — the "Loading older…" row shown at the top of the log list while a load-older fetch is in flight
 
 **UUID Grouping** (`plugins/ui/uuid-grouping/.../UuidTestTags.kt`):
 - `uuidGrouping.uuidList` — the master `LazyColumn`
@@ -861,6 +873,7 @@ Tags are defined in plugin-internal `TestTags` / `UuidTestTags` objects. They ar
 - `uuidGrouping.detailRow` — each row in the detail list
 - `uuidGrouping.detailLoading` — the loading indicator shown while the initial query runs
 - `uuidGrouping.detailEmpty` — the empty-state message shown when the query returned zero matches
+- `uuidGrouping.detailLoadingOlder` — the "Loading older…" row shown at the top of a UUID detail list while a load-older fetch is in flight
 
 ### Test commands
 

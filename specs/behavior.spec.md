@@ -35,6 +35,8 @@ The main log view shows a scrollable list of log entries. Each entry displays: t
 - When the user scrolls up, auto-scroll pauses so they can read without the view jumping.
 - A "Jump to bottom" button appears in the lower-right corner of the log list whenever the user is not at the tail. Clicking it snaps to the latest entry and resumes auto-scroll on subsequent appends.
 - A vertical scrollbar is visible on the right edge of the log list (and the same on any other long list, e.g. the UUID Grouping list and any UUID detail sub-tab).
+- Scrolling near the top of the loaded entries fetches older history. When the user is within a small distance of the top of the in-memory list, the next page of older entries is fetched and prepended; the visible scroll position is preserved across the prepend. While the fetch is in flight a small "Loading older…" row is shown at the top of the list. When the database has no more older entries matching the current filter, the auto-fetch stops firing for that session.
+- The same load-older-on-scroll behavior applies to UUID detail sub-tabs.
 
 **Display options:**
 - Log lines are color-coded by priority level: Verbose=gray, Debug=blue, Info=green, Warning=amber, Error=red, Fatal=red bold

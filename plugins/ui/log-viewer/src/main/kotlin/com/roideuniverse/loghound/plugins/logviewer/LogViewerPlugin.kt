@@ -31,6 +31,13 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.width
+import androidx.compose.material3.CircularProgressIndicator
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -60,8 +67,13 @@ class LogViewerPlugin(
         val filter: LogFilter = remember(queryText) { FilterQueryParser.parse(queryText) }
         val entries = remember { mutableStateListOf<LogEntry>() }
         val listState = rememberLazyListState()
+        var loadingOlder by remember { mutableStateOf(false) }
+        var olderExhausted by remember { mutableStateOf(false) }
 
         LaunchedEffect(filter) {
+            // Reset load-older state on filter change so the trigger can fire afresh
+            // against the new filter scope.
+            olderExhausted = false
             val initial = repository.query(filter = filter, limit = 500)
             entries.clear()
             entries.addAll(initial.entries)
@@ -82,6 +94,36 @@ class LogViewerPlugin(
                     listState.scrollToItem(entries.lastIndex)
                 }
             }
+        }
+
+        // Load-older-on-scroll trigger.
+        LaunchedEffect(filter) {
+            snapshotFlow { listState.firstVisibleItemIndex }
+                .distinctUntilChanged()
+                .collect { firstVisible ->
+                    if (firstVisible <= LOAD_OLDER_THRESHOLD &&
+                        !loadingOlder &&
+                        !olderExhausted &&
+                        entries.isNotEmpty()
+                    ) {
+                        loadingOlder = true
+                        try {
+                            val oldestId = entries.first().id
+                            val older = repository.query(
+                                filter = filter,
+                                beforeId = oldestId,
+                                limit = LOAD_OLDER_PAGE_SIZE,
+                            )
+                            if (older.entries.isEmpty()) {
+                                olderExhausted = true
+                            } else {
+                                entries.addAll(0, older.entries)
+                            }
+                        } finally {
+                            loadingOlder = false
+                        }
+                    }
+                }
         }
 
         val coroutineScope = rememberCoroutineScope()
@@ -105,6 +147,9 @@ class LogViewerPlugin(
                         state = listState,
                         modifier = Modifier.fillMaxSize().testTag(TestTags.LOG_LIST),
                     ) {
+                        if (loadingOlder) {
+                            item(key = "loadingOlder") { LoadingOlderRow() }
+                        }
                         items(items = entries, key = { it.id }) { entry -> LogRow(entry) }
                     }
                 }
@@ -146,6 +191,25 @@ private fun colorFor(priority: LogPriority): Color = when (priority) {
     LogPriority.Error   -> Color(0xFFD32F2F)   // red
     LogPriority.Fatal   -> Color(0xFFD32F2F)   // red (bold weight applied below)
     LogPriority.Silent  -> Color(0xFF999999)
+}
+
+private const val LOAD_OLDER_THRESHOLD = 10
+private const val LOAD_OLDER_PAGE_SIZE = 500
+
+@Composable
+private fun LoadingOlderRow() {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 6.dp)
+            .testTag(TestTags.LOADING_OLDER),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center,
+    ) {
+        CircularProgressIndicator(strokeWidth = 2.dp, modifier = Modifier.width(14.dp))
+        Spacer(Modifier.width(8.dp))
+        Text("Loading older…", color = Color(0xFF888888), style = TextStyle(fontSize = 12.sp))
+    }
 }
 
 @Composable

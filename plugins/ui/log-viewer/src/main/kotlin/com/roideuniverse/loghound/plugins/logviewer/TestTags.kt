@@ -15,4 +15,6 @@ object TestTags {
     const val PACKAGE_LOOKUP_RESULT_ROW = "logViewer.packageLookupResultRow"
     const val PACKAGE_LOOKUP_COPY_PACKAGE = "logViewer.packageLookupCopyPackage"
     const val PACKAGE_LOOKUP_COPY_UID = "logViewer.packageLookupCopyUid"
+
+    const val LOADING_OLDER = "logViewer.loadingOlder"
 }
