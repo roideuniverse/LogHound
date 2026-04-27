@@ -140,6 +140,7 @@ This contract is what plugins import when they need raw access — e.g. a future
 - All queries are paginated — no unbounded result sets.
 - Regex search uses SQLite's regex support or application-side filtering over indexed subsets.
 - The `:database` module exposes a factory `createLogDataStore(databaseFile: File): LogDataStore` that opens the SQLite file, applies the schema, and returns the implementation.
+- `LogRepositoryImpl` implements `ingested` as a hot broadcast stream: `append(batch)` first inserts to storage (id-populated entries returned), then emits the id-populated list to all current subscribers in a single value. There is no buffering of past batches.
 
 ### Plugin storage
 
@@ -232,27 +233,26 @@ This pattern keeps the UI responsive on first-time scans of GB-scale logs and ma
 
 ## UI framework
 
-Compose Multiplatform for Desktop.
+Compose Multiplatform for Desktop is the rendering layer. The descriptions below are about what the UI does and what the user sees; the framework-specific composable names, layout primitives, and modifier chains are deferred to Appendix F.
 
 **Window structure:**
-- Single main window titled "LogHound" with a native menu bar, a left sidebar, a tab bar, a content area, and (future) a status bar
+- Single main window titled "LogHound" with a native menu bar, a left sidebar, a tab bar, a content area, and (future) a status bar.
 - Native menu bar: File (Exit), Edit (Preferences), View (Toggle Sidebar), Help (About). Only Exit is wired in the current shell; the rest are skeleton no-ops.
 - Left sidebar: 220dp wide, light-gray background, lists every registered plugin by name. Clicking a name opens or focuses a tab.
 - Tab bar: top of the content area. Each tab shows the plugin name plus a close button (✕). Closing a tab falls back to the left neighbor. The Core Log Viewer tab is opened automatically on launch.
-- Content area: renders the active tab's `UIPlugin.content(Modifier.fillMaxSize())`.
+- Content area: renders the active tab's plugin UI at full size.
 - Status bar (future): log counts and ingestion status.
 
 **Detachable tabs:**
-- Each tab's content is a standalone composable with no dependency on its container
-- Detaching a tab renders the same composable inside a new `Window`
-- Closing a detached window re-docks the tab to the main window
+- Each tab's content is a standalone unit with no dependency on its container.
+- Detaching a tab renders the same content inside a new top-level window.
+- Closing a detached window re-docks the tab to the main window.
 
 **Virtual scrolling:**
-- Log lists use Compose `LazyColumn`.
-- Backed by paginated database queries — only visible rows plus a small buffer are in memory.
-- Scroll position drives which page of data is fetched.
-- Each long list is wrapped in a `Box` with a `VerticalScrollbar` overlaid on the right edge (`rememberScrollbarAdapter(listState)`).
-- Each long list is wrapped in a `SelectionContainer` to enable drag-select copy across rows.
+- Long lists are virtually scrolled — only visible rows plus a small buffer are in memory.
+- Backed by paginated database queries; scroll position drives which page is fetched.
+- Each long list shows a vertical scrollbar overlaid on its right edge.
+- Each long list supports drag-select to copy text across rows.
 
 **Log row colors (Log Viewer and UUID detail sub-tabs):**
 
@@ -262,23 +262,27 @@ Rows are colored by `LogEntry.priority`:
 - Info → green (`#388E3C`)
 - Warn → amber (`#F57C00`)
 - Error → red (`#D32F2F`)
-- Fatal → red (`#D32F2F`) with `FontWeight.Bold`
+- Fatal → red (`#D32F2F`) bold
 - Silent → light gray (`#999999`)
 
-The same color mapping is used in both Log Viewer and UUID detail views. Today the implementation is intentionally duplicated across the two plugin modules; it will be extracted to a shared `plugin-utils` module only when a third consumer appears.
+The same color mapping is used in both Log Viewer and UUID detail views. The implementation is intentionally duplicated across the two plugin modules; it will be extracted to a shared `plugin-utils` module only when a third consumer appears.
 
 **Jump-to-bottom button (Log Viewer):**
 
-- A floating `Button` appears at `Alignment.BottomEnd` of the log list whenever the user is not within ~2 rows of the tail (derived from `listState.layoutInfo.visibleItemsInfo`).
-- Tapping scrolls to `entries.lastIndex`. Subsequent ingested batches resume auto-scrolling because the existing "is at bottom" check sees the user back at the tail.
+- A floating button appears at the bottom-right of the log list whenever the user is not within ~2 rows of the tail.
+- Tapping scrolls to the most recent entry. Subsequent ingested batches resume auto-scrolling because the user is now at the tail.
 
 **UUID Grouping sub-tab UI:**
 
 Inside the UUID Grouping panel:
 - A small tab strip at the top. The "UUIDs" tab is always present and selected by default; selecting it shows the master list with the search/sort toolbar.
 - Clicking a UUID row opens (or focuses) a sub-tab labelled with the first 8 characters of the UUID followed by `…`. Each sub-tab has a close (`✕`).
-- Each open sub-tab is backed by a `UuidDetailController` (in `plugins/ui/uuid-grouping/.../internal/`). The controller owns the `entries` list, a `LazyListState` (so scroll position survives tab switches), and a cancellable `Job` that initially queries `repository.query(filter = LogFilter(textSearch = uuid), limit = 500)` then collects `repository.ingested` to append matching live entries.
-- Closing a sub-tab cancels its `Job` and releases its state. The `DataPlugin.run` side of UUID Grouping is unaffected by sub-tab open/close — the master backfill continues regardless.
+- Each open sub-tab retains its scroll position when the user switches tabs.
+- Each sub-tab runs an independent live subscriber that initially queries `LogRepository.query(filter = LogFilter(textSearch = uuid), limit = 500)` then follows `LogRepository.ingested` to append matching live entries. Closing the sub-tab cancels the subscriber. The `DataPlugin.run` side of UUID Grouping is unaffected by sub-tab open/close — the master backfill continues regardless.
+
+**Package UID lookup (Log Viewer):**
+
+A small input field and Find button sit above the filter bar. Typing a substring (e.g. `com.app.debug`) and pressing Find queries the connected device for matching packages and renders a small list of `(package, uid)` rows. Each row has a copy button that puts the UID on the clipboard. When no device is reachable the Find button reports "No device" and stays disabled. This is a convenience for users who want to filter their own `adb logcat --uid=<uid>` session outside LogHound; the LogHound filter bar itself does not interpret UIDs.
 
 ---
 
@@ -681,6 +685,16 @@ Capture groups, in order: `timestamp`, `pid`, `tid`, `priority` (single-char lab
 
 A pre-filter skips the regex entirely on messages that contain no `'-'` character (the common case for logcat lines), since a UUID requires hyphens. Returned UUIDs are normalised to lowercase via `String.lowercase()` so that `AAA…` and `aaa…` collapse onto a single key.
 
+### Package UID lookup parser (`plugins/ui/log-viewer`)
+
+The Package UID lookup runs `adb shell pm list packages -U <substring>` and parses each output line:
+
+```regex
+^package:(\S+)\s+uid:(\d+)$
+```
+
+Two capture groups: the package name and the integer UID. Lines that don't match are dropped silently (the command sometimes prefixes diagnostic lines or trailing whitespace).
+
 ### Filter query parser (`plugins/ui/log-viewer`)
 
 Tokenization:
@@ -729,6 +743,12 @@ The constants the code actually uses, gathered in one place so they don't have t
   3. `~/Library/Android/sdk/platform-tools/adb` (macOS default)
   4. `adb` (rely on `PATH`)
 - ADB device picker: first device whose `adb devices` line ends with `\tdevice` (skips `unauthorized` / `offline`).
+
+### Package UID lookup (Log Viewer)
+- ADB command: `adb shell pm list packages -U <substring>`
+- ADB resolver order: same as `LogcatDataPlugin` above (the Log Viewer module duplicates the resolver code locally; will be extracted to a shared helper on third use).
+- Result row limit: no explicit cap; the device's `pm list packages` output is small enough (~hundreds of rows max).
+- Empty/no-device response: the Find button surfaces "No device" inline; the lookup returns an empty list rather than throwing.
 
 ### `SyntheticDataPlugin`
 - UUID pool size: 100 (generated at startup with `UUID.randomUUID()`)
@@ -788,6 +808,10 @@ Tags are defined in plugin-internal `TestTags` / `UuidTestTags` objects. They ar
 - `logViewer.logRow` — each rendered row
 - `logViewer.filterInput` — the filter `BasicTextField`
 - `logViewer.jumpToBottom` — the floating Jump-to-bottom `Button`
+- `logViewer.packageLookupInput` — the Package UID lookup input
+- `logViewer.packageLookupFind` — the Find button
+- `logViewer.packageLookupResultRow` — each `(package, uid)` result row
+- `logViewer.packageLookupCopy` — the per-row copy button
 
 **UUID Grouping** (`plugins/ui/uuid-grouping/.../UuidTestTags.kt`):
 - `uuidGrouping.uuidList` — the master `LazyColumn`
@@ -802,3 +826,125 @@ Tags are defined in plugin-internal `TestTags` / `UuidTestTags` objects. They ar
 - Full suite: `./gradlew test` (runs all unit + integration + E2E).
 - Just E2E: `./gradlew :app:jvmTest`.
 - Single class: `./gradlew :app:jvmTest --tests "com.roideuniverse.loghound.e2e.LogViewerE2eTest"`.
+
+---
+
+## Appendix F — UI implementation patterns
+
+How the Compose Desktop primitives realise the behaviors described in the UI framework section. This appendix is the "if you're regenerating the UI code" reference; the main body intentionally leaves these out so it reads as product behavior, not API reference.
+
+### Virtually scrolled list with overlaid scrollbar and drag-select
+
+```kotlin
+val listState = rememberLazyListState()
+Box(modifier = Modifier.fillMaxSize()) {
+    SelectionContainer(modifier = Modifier.fillMaxSize()) {
+        LazyColumn(
+            state = listState,
+            modifier = Modifier.fillMaxSize().testTag(TestTags.LOG_LIST),
+        ) {
+            items(items = entries, key = { it.id }) { entry -> LogRow(entry) }
+        }
+    }
+    VerticalScrollbar(
+        modifier = Modifier.align(Alignment.CenterEnd).fillMaxHeight(),
+        adapter = rememberScrollbarAdapter(listState),
+    )
+}
+```
+
+The `SelectionContainer` wraps the `LazyColumn` so drag-select copy works across rows. The `VerticalScrollbar` is a sibling of the list inside a parent `Box`, aligned to the right edge.
+
+### Jump-to-bottom button (Log Viewer)
+
+```kotlin
+val isAtBottom by remember {
+    derivedStateOf {
+        if (entries.isEmpty()) return@derivedStateOf true
+        val last = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1
+        last >= entries.lastIndex - 2
+    }
+}
+if (!isAtBottom) {
+    Button(
+        onClick = { coroutineScope.launch { listState.scrollToItem(entries.lastIndex) } },
+        modifier = Modifier.align(Alignment.BottomEnd).testTag(TestTags.JUMP_TO_BOTTOM),
+        // …colors…
+    ) { Text("Jump to bottom ↓") }
+}
+```
+
+### UUID Grouping sub-tabs
+
+Per-UUID state is held in an internal `UuidDetailController` (`plugins/ui/uuid-grouping/.../internal/UuidDetailController.kt`):
+
+```kotlin
+internal class UuidDetailController(private val uuid: String) {
+    val entries = mutableStateListOf<LogEntry>()
+    val listState = LazyListState()
+    private var job: Job? = null
+
+    fun start(scope: CoroutineScope, repository: LogRepository) {
+        if (job?.isActive == true) return
+        job = scope.launch {
+            val initial = repository.query(filter = LogFilter(textSearch = uuid), limit = 500)
+            entries.addAll(initial.entries)
+            if (entries.isNotEmpty()) listState.scrollToItem(entries.lastIndex)
+            repository.ingested.collect { batch ->
+                val matched = batch.filter { it.message.contains(uuid, ignoreCase = true) }
+                if (matched.isNotEmpty()) entries.addAll(matched)
+            }
+        }
+    }
+
+    fun stop() { job?.cancel(); job = null }
+}
+```
+
+The plugin's `content` keeps a `Map<String, UuidDetailController>` keyed by UUID — opening a sub-tab calls `start`, closing calls `stop`. The `LazyListState` lives on the controller so scroll position survives tab switches.
+
+### Package UID lookup
+
+```kotlin
+@Composable
+fun PackageUidLookupBar(modifier: Modifier = Modifier) {
+    var query by remember { mutableStateOf("") }
+    var results by remember { mutableStateOf<List<PackageInfo>>(emptyList()) }
+    var noDevice by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    val clipboard = LocalClipboardManager.current
+
+    Column(modifier = modifier) {
+        Row { /* BasicTextField for `query` + Button for "Find" */ }
+        if (noDevice) Text("No device", color = …)
+        results.forEach { row ->
+            Row(modifier = Modifier.testTag(TestTags.PACKAGE_LOOKUP_RESULT_ROW)) {
+                Text(row.packageName)
+                Text(row.uid.toString())
+                IconButton(
+                    onClick = { clipboard.setText(AnnotatedString(row.uid.toString())) },
+                    modifier = Modifier.testTag(TestTags.PACKAGE_LOOKUP_COPY),
+                ) { Text("⎘") }
+            }
+        }
+    }
+}
+```
+
+Internal helper signature:
+
+```kotlin
+internal suspend fun lookupPackageUids(query: String): List<PackageInfo> = withContext(Dispatchers.IO) {
+    val adb = findAdbExecutable() ?: return@withContext emptyList()
+    val proc = ProcessBuilder(adb, "shell", "pm", "list", "packages", "-U", query)
+        .redirectErrorStream(true)
+        .start()
+    val out = proc.inputStream.bufferedReader().readText()
+    proc.waitFor()
+    PACKAGE_LINE_REGEX.findAll(out).map { m ->
+        PackageInfo(packageName = m.groupValues[1], uid = m.groupValues[2].toInt())
+    }.toList()
+}
+```
+
+`findAdbExecutable()` is duplicated locally from the logcat plugin (Appendix D → ADB resolver order). On third use across plugins, this gets extracted to a shared helper.

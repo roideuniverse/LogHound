@@ -95,6 +95,8 @@ class LogViewerPlugin(
         }
 
         Column(modifier = modifier.fillMaxSize()) {
+            PackageUidLookupBar()
+            HorizontalDivider(color = Color(0xFFCCCCCC))
             FilterBar(query = queryText, onQueryChange = { queryText = it })
             HorizontalDivider(color = Color(0xFFCCCCCC))
             Box(modifier = Modifier.fillMaxSize()) {

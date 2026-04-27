@@ -9,4 +9,9 @@ object TestTags {
     const val LOG_ROW = "logViewer.logRow"
     const val FILTER_INPUT = "logViewer.filterInput"
     const val JUMP_TO_BOTTOM = "logViewer.jumpToBottom"
+
+    const val PACKAGE_LOOKUP_INPUT = "logViewer.packageLookupInput"
+    const val PACKAGE_LOOKUP_FIND = "logViewer.packageLookupFind"
+    const val PACKAGE_LOOKUP_RESULT_ROW = "logViewer.packageLookupResultRow"
+    const val PACKAGE_LOOKUP_COPY = "logViewer.packageLookupCopy"
 }

@@ -76,6 +76,14 @@ The input shows a placeholder hint when empty (e.g. `tag:Activity level:W packag
 
 ---
 
+## Package UID lookup
+
+Above the filter bar in the Log Viewer there's a small input field and a Find button. The user types all or part of a package name (e.g. `com.app.debug`); pressing Find queries the connected device for matching packages and shows a small list of `(package, uid)` rows underneath the input. Each row has a copy button that puts the UID on the clipboard. When no device is reachable the Find button reports "No device" and stays disabled.
+
+This is a convenience for users who want to filter their own `adb logcat --uid=<uid>` session outside LogHound; the LogHound filter bar itself does not interpret UIDs — paste the UID into your own terminal session.
+
+---
+
 ## Plugin system
 
 LogHound is a plugin-based app. Every feature that displays logs — including the core log viewer itself — is a plugin. This ensures the plugin API is powerful enough to build any log analysis tool.
