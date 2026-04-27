@@ -27,8 +27,11 @@ fun main() = application {
     val dataStore = remember { createLogDataStore(dbFile) }
     val repository = remember { LogRepositoryImpl(dataStore) }
 
-    val uuidGrouping = remember {
-        UuidGroupingPlugin(File(System.getProperty("user.home"), ".loghound/plugins/uuid-grouping.db"))
+    val uuidGrouping = remember(repository) {
+        UuidGroupingPlugin(
+            databaseFile = File(System.getProperty("user.home"), ".loghound/plugins/uuid-grouping.db"),
+            repository = repository,
+        )
     }
 
     val dataPlugins: List<DataPlugin> = remember {

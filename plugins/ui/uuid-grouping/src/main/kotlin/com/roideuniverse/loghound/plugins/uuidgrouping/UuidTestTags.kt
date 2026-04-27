@@ -7,4 +7,10 @@ package com.roideuniverse.loghound.plugins.uuidgrouping
 object UuidTestTags {
     const val UUID_LIST = "uuidGrouping.uuidList"
     const val UUID_ROW = "uuidGrouping.uuidRow"
+
+    const val UUID_TAB = "uuidGrouping.tab"
+    const val UUID_TAB_CLOSE = "uuidGrouping.tabClose"
+
+    const val UUID_DETAIL_LIST = "uuidGrouping.detailList"
+    const val UUID_DETAIL_ROW = "uuidGrouping.detailRow"
 }
