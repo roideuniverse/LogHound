@@ -110,6 +110,27 @@ A single test class:
 ./gradlew :app:jvmTest --tests "com.roideuniverse.loghound.e2e.LogViewerE2eTest"
 ```
 
+## Replay or stream logs without the app
+
+`scripts/inject_logs.py` is a small Python 3 tool that writes log entries directly into `~/.loghound/logs.db`. It needs only `python3` — no Gradle, no app process.
+
+```sh
+# Replay a saved logcat capture into the DB
+scripts/inject_logs.py --input session.log
+
+# Stream live captures into the DB without running the app
+adb logcat -v threadtime | scripts/inject_logs.py
+
+# Custom DB path
+scripts/inject_logs.py --db /tmp/test-logs.db --input fixture.log
+```
+
+Then open LogHound — the Log Viewer shows the rows on initial query, and UUID Grouping's data side backfills any new UUIDs from its checkpoint on launch.
+
+**Caveat:** rows added by the script *while* the app is open won't appear live in the UI — the app's `ingested` Flow only fires for in-process appends. Close + reopen the affected tab (or relaunch the app) to pick them up.
+
+The script must be run against a database that already has the LogHound schema. Launching the app once creates `~/.loghound/logs.db`; after that the script can run any time, with or without the app.
+
 ## Stop / clean
 
 ```sh

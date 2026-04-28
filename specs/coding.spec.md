@@ -875,6 +875,29 @@ Tags are defined in plugin-internal `TestTags` / `UuidTestTags` objects. They ar
 
 ---
 
+## Appendix G — Offline tooling
+
+`scripts/inject_logs.py` is a small standalone Python 3 tool that writes log entries directly into `~/.loghound/logs.db`. It runs without the LogHound app and without Gradle — only requires `python3` (built into macOS).
+
+**Why it exists.** Two real workflows:
+1. **Replay a saved capture** (`scripts/inject_logs.py --input session.log`) — useful when a teammate hands over a hairy `adb logcat` dump, or you want to re-load a captured session weeks later for inspection.
+2. **Continuous ingestion without the app** (`adb logcat -v threadtime | scripts/inject_logs.py`) — keep capturing across multiple app sessions, in a `tmux`/`nohup` session.
+
+**Contract.** The script reuses two pieces from the spec:
+- The threadtime regex from Appendix C.
+- The schema from Appendix B (it inserts via the same column shape; priority enum is stored as the enum NAME, e.g. `Verbose`/`Debug`/…, matching what `LogRepositoryImpl` writes).
+
+**Behavior:**
+- `--db <path>` defaults to `~/.loghound/logs.db`.
+- `--input <file>` defaults to stdin.
+- Inserts in batches of 100 with intermediate commits, so streaming usage doesn't lose data on Ctrl+C; the script handles `SIGINT` by flushing remaining rows and exiting cleanly.
+- Errors out with a hint if the DB doesn't exist (the LogHound app must have launched once to create the schema, or the user must point `--db` at an existing one).
+- Lines that don't match the threadtime regex are skipped silently and counted; the final summary reports both inserted and skipped counts.
+
+**Cross-process limitation.** Rows the script writes while the app is running do not trigger the in-process `ingested` Flow. The app's UI sees them only on the next initial query (close/reopen a tab, or relaunch). Live cross-process updates would require SQLite update-hooks or polling and are deferred.
+
+---
+
 ## Appendix F — UI implementation patterns
 
 How the Compose Desktop primitives realise the behaviors described in the UI framework section. This appendix is the "if you're regenerating the UI code" reference; the main body intentionally leaves these out so it reads as product behavior, not API reference.
