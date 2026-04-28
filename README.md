@@ -131,6 +131,37 @@ Then open LogHound — the Log Viewer shows the rows on initial query, and UUID 
 
 The script must be run against a database that already has the LogHound schema. Launching the app once creates `~/.loghound/logs.db`; after that the script can run any time, with or without the app.
 
+### Long captures (hours)
+
+For hours-long captures, two practical concerns:
+
+- **`adb` pipes can break.** A USB hiccup, device reboot, or `adb` server restart will exit `adb logcat` and the pipe closes. A multi-hour capture shouldn't depend on a single pipe staying alive.
+- **DB grows.** A chatty Android device emits 50–500 lines/sec at roughly 150 bytes/row on disk. Multi-hour captures land at hundreds of MB to a few GB in `~/.loghound/logs.db`. SQLite handles it fine — keep an eye with `du -h ~/.loghound/logs.db`.
+
+Recommended robust setup — `tmux` session running a restart-on-disconnect loop:
+
+```sh
+# Start a tmux session so the capture survives closing your terminal
+tmux new -s loghound-capture
+
+# Inside tmux, run a loop that reconnects if adb drops out
+while true; do
+  date "+%F %T  starting capture"
+  adb logcat -v threadtime | scripts/inject_logs.py
+  echo "$(date '+%F %T')  pipe closed — retrying in 5s"
+  sleep 5
+done
+```
+
+Detach with **Ctrl+B then D**. Re-attach later with `tmux attach -t loghound-capture`. Stop the capture cleanly with Ctrl+C inside the loop (the script's `SIGINT` handler flushes pending rows before exiting); the loop's `while true` will then try to restart, so kill the tmux session (`tmux kill-session -t loghound-capture`) when you're truly done.
+
+If you don't want tmux, `nohup` works too:
+
+```sh
+nohup bash -c 'while true; do adb logcat -v threadtime | scripts/inject_logs.py; sleep 5; done' \
+  > /tmp/loghound-injector.log 2>&1 &
+```
+
 ## Stop / clean
 
 ```sh
