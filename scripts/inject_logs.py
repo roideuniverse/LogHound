@@ -51,6 +51,7 @@ PRIORITY_NAMES = {
 }
 
 BATCH_SIZE = 100
+PROGRESS_EVERY = 1_000
 INSERT_SQL = (
     "INSERT INTO logs"
     "(timestamp, pid, tid, priority, tag, message, package_name) "
@@ -140,6 +141,13 @@ def main() -> int:
             counters["inserted"] += 1
             if counters["inserted"] % BATCH_SIZE == 0:
                 conn.commit()
+            if counters["inserted"] % PROGRESS_EVERY == 0:
+                print(
+                    f"… inserted {counters['inserted']} rows "
+                    f"({counters['skipped']} skipped)",
+                    file=sys.stderr,
+                    flush=True,
+                )
         flush_and_close()
     except Exception as exc:
         conn.rollback()

@@ -893,6 +893,7 @@ Tags are defined in plugin-internal `TestTags` / `UuidTestTags` objects. They ar
 - Inserts in batches of 100 with intermediate commits, so streaming usage doesn't lose data on Ctrl+C; the script handles `SIGINT` by flushing remaining rows and exiting cleanly.
 - Errors out with a hint if the DB doesn't exist (the LogHound app must have launched once to create the schema, or the user must point `--db` at an existing one).
 - Lines that don't match the threadtime regex are skipped silently and counted; the final summary reports both inserted and skipped counts.
+- Emits progress to stderr every 1,000 inserted rows so multi-hour streaming captures show liveness without flooding output. Format: `… inserted N rows (M skipped)`.
 
 **Cross-process limitation.** Rows the script writes while the app is running do not trigger the in-process `ingested` Flow. The app's UI sees them only on the next initial query (close/reopen a tab, or relaunch). Live cross-process updates would require SQLite update-hooks or polling and are deferred.
 

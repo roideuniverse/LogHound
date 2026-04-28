@@ -162,6 +162,19 @@ nohup bash -c 'while true; do adb logcat -v threadtime | scripts/inject_logs.py;
   > /tmp/loghound-injector.log 2>&1 &
 ```
 
+### Verifying the capture is working
+
+Three signals, none of which require the app:
+
+1. **The script's own progress output** — every 1,000 rows the script prints a line to stderr like `… inserted 12000 rows (3 skipped)`. If you don't see those messages tick by during a long capture, something's stuck.
+2. **Row count via `sqlite3`** — pure read, safe while the script is writing (WAL handles concurrent readers). Run it twice, a minute apart; the number should grow:
+   ```sh
+   sqlite3 ~/.loghound/logs.db 'SELECT COUNT(*) FROM logs'
+   ```
+3. **File size growth** — `du -h ~/.loghound/logs.db`. Should grow over time at roughly 100–500 bytes/row × your device's log rate.
+
+You can also open LogHound at any point during the capture; the Log Viewer's initial query will show whatever was committed up to that moment.
+
 ## Stop / clean
 
 ```sh
