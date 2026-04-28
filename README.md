@@ -166,7 +166,7 @@ nohup bash -c 'while true; do adb logcat -v threadtime | scripts/inject_logs.py;
 
 Three signals, none of which require the app:
 
-1. **The script's own progress output** — every 1,000 rows the script prints a line to stderr like `… inserted 12000 rows (3 skipped)`. If you don't see those messages tick by during a long capture, something's stuck.
+1. **The script's own progress output** — every 10,000 rows by default the script prints a line to stderr like `… inserted 120000 rows (3 skipped)`. Tune the cadence with `--progress-every N` (e.g. `--progress-every 1000` to print more frequently for low-traffic devices, or `--progress-every 0` to silence). If you don't see those messages tick by during a long capture, something's stuck.
 2. **Row count via `sqlite3`** — pure read, safe while the script is writing (WAL handles concurrent readers). Run it twice, a minute apart; the number should grow:
    ```sh
    sqlite3 ~/.loghound/logs.db 'SELECT COUNT(*) FROM logs'

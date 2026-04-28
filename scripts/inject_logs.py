@@ -51,7 +51,7 @@ PRIORITY_NAMES = {
 }
 
 BATCH_SIZE = 100
-PROGRESS_EVERY = 1_000
+DEFAULT_PROGRESS_EVERY = 10_000
 INSERT_SQL = (
     "INSERT INTO logs"
     "(timestamp, pid, tid, priority, tag, message, package_name) "
@@ -72,6 +72,16 @@ def parse_args() -> argparse.Namespace:
         "--input",
         help="Logcat file to read (default: stdin)",
     )
+    parser.add_argument(
+        "--progress-every",
+        type=int,
+        default=DEFAULT_PROGRESS_EVERY,
+        metavar="N",
+        help=(
+            "Print a progress line to stderr every N inserted rows "
+            f"(default: {DEFAULT_PROGRESS_EVERY}). Pass 0 to silence progress."
+        ),
+    )
     return parser.parse_args()
 
 
@@ -81,6 +91,8 @@ def open_source(path: Optional[str]) -> TextIO:
 
 def main() -> int:
     args = parse_args()
+
+    progress_every: int = max(0, args.progress_every)
 
     db_path = Path(args.db)
     if not db_path.exists():
@@ -141,7 +153,7 @@ def main() -> int:
             counters["inserted"] += 1
             if counters["inserted"] % BATCH_SIZE == 0:
                 conn.commit()
-            if counters["inserted"] % PROGRESS_EVERY == 0:
+            if progress_every > 0 and counters["inserted"] % progress_every == 0:
                 print(
                     f"… inserted {counters['inserted']} rows "
                     f"({counters['skipped']} skipped)",
