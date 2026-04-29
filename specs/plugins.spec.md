@@ -59,14 +59,73 @@ host renders them into Compose itself.
 
 Verbs available today:
 
-- `column { … }` — vertical layout
-- `text(value)` — a string
-- `list(items, key) { item -> … }` — a virtualized vertical list
+**Layout**
+- `column { … }` — vertical stack
+- `row { … }` — horizontal stack
+- `section { … }` — toolbar-styled `Surface` with `theme.toolbarBackground` and inner padding;
+  use it to group a search field, button, and status text
+- `weight(weight) { … }` — flex modifier inside a `row` or `column`; the wrapped subtree
+  occupies a proportional share of the parent's free space
+- `spacer(width = N, height = N)` — fixed-size gap, dp values
 
-That's the whole UI surface for now. Everything else (rows, text fields, modifiers, scrollbars,
-selection, sub-tabs) gets added when a plugin asks for it.
+**Content**
+- `text(value, style?)` — a string. Optional `style` for per-line styling (e.g. priority colors
+  in a log row). Otherwise inherits from `theme.text` (or `theme.rowText` inside a list)
+- `divider()` — themed horizontal rule
+- `button(label, onClick)` — themed text button
+- `textField(state, placeholder)` — single-line input bound to a `MutableState<String>`
+- `clickable(onClick) { … }` — wraps its children so the subtree fires `onClick` when tapped
+
+**Containers**
+- `list(items, key) { item -> … }` — virtualized vertical list with auto-attached vertical
+  scrollbar, drag-select-to-copy, and dividers between rows
+- `tabs(controller, master, detail)` — host-managed tab strip; see below
+
+The DSL grows when a real plugin asks for something that can't be expressed with these.
+
+### Sub-tabs
+
+`tabController(masterName)` returns a `TabController` that owns the open-tab list and the active
+tab. Plugins manipulate it from data and UI blocks via `open(id, name)`, `close(id)`, and
+`activate(id?)` (`null` = master).
+
+The `tabs(controller, master, detail)` verb renders the controller as a tab strip plus content:
+
+- `master: UiScope.() -> Unit` — content for the leftmost (always-present) tab.
+- `detail: UiScope.(id) -> Unit` — content for whichever detail tab is active. Receives the open
+  tab's `id`. Re-runs each time the active tab changes.
+
+The host owns tab persistence within the session; nothing is durable across restarts unless the
+plugin re-opens tabs from its own state.
 
 ---
+
+## Theming
+
+Every plugin renders against a `PluginTheme` — a flat record of colors and text styles (background,
+dividers, row text, tab strip, text field, etc.) that the renderer reads via a Compose
+`CompositionLocal`. The host ships defaults that match LogHound's built-in plugin look (white
+background, monospace 12sp rows, `0xFFCCCCCC` dividers).
+
+Plugins that want different visuals override per-field:
+
+```kotlin
+plugin {
+    id = "..."
+    name = "..."
+    theme {
+        background = Color(0xFF101010)
+        rowText = TextStyle(fontFamily = FontFamily.Monospace, fontSize = 13.sp, color = Color.White)
+    }
+    ui { … }
+}
+```
+
+The `theme { … }` builder copies the current theme, applies overrides, and replaces it. Authors can
+also set `theme = PluginTheme(...)` directly if they prefer a copy-and-swap.
+
+The theme covers every color and text style the renderer paints. Reaching pixel-parity with another
+plugin means matching its theme, not adding new verbs.
 
 ## State between data and UI
 

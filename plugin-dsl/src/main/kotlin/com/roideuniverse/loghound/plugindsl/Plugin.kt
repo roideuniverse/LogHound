@@ -1,7 +1,11 @@
 package com.roideuniverse.loghound.plugindsl
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import com.roideuniverse.loghound.core.DataPlugin
 import com.roideuniverse.loghound.core.LogRepository
@@ -20,6 +24,7 @@ fun plugin(block: PluginBuilder.() -> Unit): DslPlugin {
 class PluginBuilder {
     var id: String = ""
     var name: String = ""
+    var theme: PluginTheme = PluginTheme()
     internal var dataBlock: (suspend DataScope.(LogRepository) -> Unit)? = null
     internal var uiBlock: (UiScope.() -> Unit)? = null
 
@@ -31,16 +36,21 @@ class PluginBuilder {
         uiBlock = block
     }
 
+    fun theme(block: ThemeBuilder.() -> Unit) {
+        theme = ThemeBuilder(theme).apply(block).build()
+    }
+
     internal fun build(): DslPlugin {
         require(id.isNotBlank()) { "plugin id is required" }
         require(name.isNotBlank()) { "plugin name is required" }
-        return DslPlugin(id, name, dataBlock, uiBlock)
+        return DslPlugin(id, name, theme, dataBlock, uiBlock)
     }
 }
 
 class DslPlugin internal constructor(
     override val id: String,
     override val name: String,
+    private val theme: PluginTheme,
     private val dataBlock: (suspend DataScope.(LogRepository) -> Unit)?,
     private val uiBlock: (UiScope.() -> Unit)?,
 ) : UIPlugin, DataPlugin {
@@ -54,9 +64,16 @@ class DslPlugin internal constructor(
     @Composable
     override fun content(modifier: Modifier) {
         val block = uiBlock ?: return
-        Box(modifier) {
-            val scope = UiScope().apply(block)
-            renderVerbs(scope.verbs)
+        CompositionLocalProvider(
+            LocalPluginTheme provides theme,
+            LocalTextStyle provides theme.text,
+        ) {
+            Surface(modifier = modifier.fillMaxSize(), color = theme.background) {
+                Box(modifier = Modifier.fillMaxSize()) {
+                    val scope = UiScope().apply(block)
+                    renderVerbs(scope.verbs)
+                }
+            }
         }
     }
 }
