@@ -11,6 +11,7 @@ import com.roideuniverse.loghound.core.DataPlugin
 import com.roideuniverse.loghound.core.UIPlugin
 import com.roideuniverse.loghound.core.impl.LogRepositoryImpl
 import com.roideuniverse.loghound.database.createLogDataStore
+import com.roideuniverse.loghound.plugins.helloDslPlugin
 import com.roideuniverse.loghound.plugins.logcat.LogcatDataPlugin
 import com.roideuniverse.loghound.plugins.logviewer.LogViewerPlugin
 import com.roideuniverse.loghound.plugins.uuidgrouping.UuidGroupingPlugin
@@ -33,8 +34,12 @@ fun main() = application {
         )
     }
 
-    val dataPlugins: List<DataPlugin> = remember { listOf(LogcatDataPlugin(), uuidGrouping) }
-    val uiPlugins: List<UIPlugin> = remember { listOf(LogViewerPlugin(repository), uuidGrouping) }
+    val helloDsl = remember { helloDslPlugin() }
+
+    val dataPlugins: List<DataPlugin> = remember { listOf(LogcatDataPlugin(), uuidGrouping, helloDsl) }
+    val uiPlugins: List<UIPlugin> = remember {
+        listOf(LogViewerPlugin(repository), uuidGrouping, helloDsl)
+    }
 
     val backgroundScope = remember { CoroutineScope(SupervisorJob() + Dispatchers.IO) }
     remember(dataPlugins) {

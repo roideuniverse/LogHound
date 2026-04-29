@@ -15,6 +15,7 @@ kotlin {
             implementation(project(":core-api"))
             implementation(project(":database"))
             implementation(project(":core-impl"))
+            implementation(project(":plugin-dsl"))
             implementation(project(":plugins:ui:log-viewer"))
             implementation(project(":plugins:ui:uuid-grouping"))
             implementation(project(":plugins:data:logcat"))
