@@ -2,7 +2,7 @@
 
 A fast, memory-efficient Android logcat viewer built with Compose Multiplatform for Desktop. Plugin-based: every visual feature is a plugin (including the core log viewer), and every data source is a plugin (logcat, file, future others).
 
-For the full design, read the specs first: [`specs/behavior.spec.md`](specs/behavior.spec.md), [`specs/coding.spec.md`](specs/coding.spec.md), and [`AGENTS.md`](AGENTS.md).
+For the full design, read the specs first: [`specs/behavior.spec.md`](specs/behavior.spec.md), [`specs/coding.spec.md`](specs/coding.spec.md), [`specs/plugins.spec.md`](specs/plugins.spec.md) (DSL plugin authoring), and [`AGENTS.md`](AGENTS.md).
 
 ## Prerequisites
 
@@ -191,11 +191,50 @@ If `:app:run` left a window open after a crash, close the LogHound window (the J
 core-api/                       interfaces + domain models (LogRepository, UIPlugin, DataPlugin, LogEntry, …)
 database/                       SQLDelight schema + LogDataStore impl (depends only on core-api)
 core-impl/                      LogRepositoryImpl (wraps a LogDataStore)
+plugin-dsl/                     small DSL for "vibe-coded" plugins (verbs, theme, tabs, scripting host)
 app/                            DI/wiring, window shell, tab management
 plugins/ui/log-viewer/          tail-style log view with filter bar
 plugins/ui/uuid-grouping/       UUID discovery + counts; owns its own SQLite file
 plugins/data/logcat/            real `adb logcat -v threadtime` source
+examples/plugins/               example .kts plugins (drop into ~/.loghound/plugins/)
 specs/                          source of truth — read these before changing code
 ```
 
 Plugin storage convention: per-plugin SQLite files at `~/.loghound/plugins/<plugin-id>.db`. Main logs DB at `~/.loghound/logs.db`.
+
+## DSL plugins (`.kts` drop-ins)
+
+Beyond the in-tree built-in plugins, LogHound loads `.kts` scripts from `~/.loghound/plugins/` at launch. Each script declares one plugin via the DSL:
+
+```kotlin
+plugin {
+    id = "my-grouper"
+    name = "My Grouper"
+
+    val rows = stateOf<List<String>>(emptyList())
+
+    data { repo ->
+        repo.ingested.collect { batch ->
+            rows.value = (rows.value + batch.map { it.message }).takeLast(50)
+        }
+    }
+
+    ui {
+        column {
+            text("${rows.value.size} recent lines")
+            list(items = rows.value, key = { it }) { msg -> text(msg) }
+        }
+    }
+}
+```
+
+The DSL exposes ~13 verbs (`column`, `row`, `list`, `text`, `textField`, `button`, `clickable`, `tabs`, …) plus a `theme { … }` builder for visual overrides. See [`specs/plugins.spec.md`](specs/plugins.spec.md) for the full surface and [`examples/plugins/uuid-grouping.kts`](examples/plugins/uuid-grouping.kts) for a worked example that mirrors the built-in UUID Grouping plugin (master list + sort toggle + per-UUID detail tabs).
+
+Drop a script in:
+
+```sh
+mkdir -p ~/.loghound/plugins
+cp examples/plugins/uuid-grouping.kts ~/.loghound/plugins/
+```
+
+Then relaunch — the new plugin appears in the sidebar under whatever `name` the script declared.
