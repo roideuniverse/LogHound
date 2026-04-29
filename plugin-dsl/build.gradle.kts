@@ -13,4 +13,6 @@ dependencies {
     api(compose.ui)
     testImplementation(libs.kotlin.test)
     testImplementation(libs.junit)
+    testImplementation(compose.desktop.uiTestJUnit4)
+    testImplementation(compose.desktop.currentOs)
 }
