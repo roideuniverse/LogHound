@@ -52,7 +52,7 @@ internal fun renderVerbs(verbs: List<Verb>) {
             is TextVerb -> Text(
                 verb.value,
                 style = verb.style ?: LocalTextStyle.current,
-                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                modifier = Modifier.padding(vertical = 2.dp),
             )
             is SpacerVerb -> RenderSpacer(verb)
             is DividerVerb -> HorizontalDivider(color = theme.divider)
@@ -121,12 +121,17 @@ private fun RenderList(verb: ListVerb<*>, theme: PluginTheme) {
             LazyColumn(
                 state = listState,
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(horizontal = 0.dp, vertical = 0.dp),
             ) {
                 items(items = v.items, key = { item -> v.key(item) }) { item ->
                     CompositionLocalProvider(LocalTextStyle provides theme.rowText) {
                         Column(modifier = Modifier.fillMaxWidth()) {
-                            renderVerbs(v.itemContent(item))
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                            ) {
+                                renderVerbs(v.itemContent(item))
+                            }
                             HorizontalDivider(color = theme.rowDivider)
                         }
                     }

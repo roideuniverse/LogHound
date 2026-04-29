@@ -18,7 +18,10 @@ fun helloDslPlugin() = plugin {
 
     ui {
         column {
-            text("Hello DSL — last ${recent.value.size} log lines")
+            section {
+                text("Hello DSL — last ${recent.value.size} log lines")
+            }
+            divider()
             list(items = recent.value, key = { it.id }) { entry ->
                 text("${entry.tag}: ${entry.message.take(120)}")
             }
