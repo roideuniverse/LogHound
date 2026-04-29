@@ -64,6 +64,8 @@ Verbs available today:
 - `row { … }` — horizontal stack
 - `section { … }` — toolbar-styled `Surface` with `theme.toolbarBackground` and inner padding;
   use it to group a search field, button, and status text
+- `centered { … }` — fills the available space and centers its children; used for loading
+  spinners and empty-state messages on detail tabs
 - `weight(weight) { … }` — flex modifier inside a `row` or `column`; the wrapped subtree
   occupies a proportional share of the parent's free space
 - `spacer(width = N, height = N)` — fixed-size gap, dp values
@@ -72,6 +74,7 @@ Verbs available today:
 - `text(value, style?)` — a string. Optional `style` for per-line styling (e.g. priority colors
   in a log row). Otherwise inherits from `theme.text` (or `theme.rowText` inside a list)
 - `divider()` — themed horizontal rule
+- `loading()` — circular progress spinner; pair with `centered` for a "loading…" panel
 - `button(label, onClick)` — themed text button
 - `textField(state, placeholder)` — single-line input bound to a `MutableState<String>`
 - `clickable(onClick) { … }` — wraps its children so the subtree fires `onClick` when tapped

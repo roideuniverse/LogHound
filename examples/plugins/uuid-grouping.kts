@@ -114,9 +114,11 @@ plugin {
             detail = { uuid ->
                 val entries = detailEntries.value[uuid]
                 if (entries == null) {
-                    text("Loading log lines for $uuid…")
+                    centered { loading() }
                 } else if (entries.isEmpty()) {
-                    text("No log lines for this UUID")
+                    centered {
+                        text("No log lines for this UUID")
+                    }
                 } else {
                     list(items = entries, key = { it.id }) { entry ->
                         val color = when (entry.priority) {

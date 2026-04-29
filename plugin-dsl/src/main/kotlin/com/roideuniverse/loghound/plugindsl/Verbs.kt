@@ -8,9 +8,11 @@ internal sealed interface Verb
 internal class ColumnVerb(val children: List<Verb>) : Verb
 internal class RowVerb(val children: List<Verb>) : Verb
 internal class SectionVerb(val children: List<Verb>) : Verb
+internal class CenteredVerb(val children: List<Verb>) : Verb
 internal class TextVerb(val value: String, val style: TextStyle?) : Verb
 internal class SpacerVerb(val widthDp: Int, val heightDp: Int) : Verb
 internal class DividerVerb : Verb
+internal class LoadingVerb : Verb
 internal class ButtonVerb(val label: String, val onClick: () -> Unit) : Verb
 internal class WeightVerb(val weight: Float, val children: List<Verb>) : Verb
 internal class ListVerb<T>(
@@ -55,6 +57,16 @@ class UiScope internal constructor() {
         val child = UiScope()
         child.content()
         verbs.add(SectionVerb(child.verbs.toList()))
+    }
+
+    fun centered(content: UiScope.() -> Unit) {
+        val child = UiScope()
+        child.content()
+        verbs.add(CenteredVerb(child.verbs.toList()))
+    }
+
+    fun loading() {
+        verbs.add(LoadingVerb())
     }
 
     fun text(value: String, style: TextStyle? = null) {

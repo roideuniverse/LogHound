@@ -25,6 +25,7 @@ import androidx.compose.foundation.rememberScrollbarAdapter
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.Surface
@@ -49,6 +50,14 @@ internal fun renderVerbs(verbs: List<Verb>) {
                 renderRowChildren(verb.children)
             }
             is SectionVerb -> RenderSection(verb, theme)
+            is CenteredVerb -> Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center,
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    renderVerbs(verb.children)
+                }
+            }
             is TextVerb -> Text(
                 verb.value,
                 style = verb.style ?: LocalTextStyle.current,
@@ -56,6 +65,10 @@ internal fun renderVerbs(verbs: List<Verb>) {
             )
             is SpacerVerb -> RenderSpacer(verb)
             is DividerVerb -> HorizontalDivider(color = theme.divider)
+            is LoadingVerb -> CircularProgressIndicator(
+                strokeWidth = 2.dp,
+                modifier = Modifier.width(24.dp),
+            )
             is ButtonVerb -> TextButton(onClick = verb.onClick) {
                 Text(verb.label, style = theme.buttonText)
             }
