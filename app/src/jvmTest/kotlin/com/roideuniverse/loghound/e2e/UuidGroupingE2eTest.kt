@@ -43,7 +43,7 @@ class UuidGroupingE2eTest {
         runBlocking { env.repository.append(inputs) }
 
         val pluginDbFile = File(env.pluginDbDir, "uuid-grouping.db")
-        val plugin = UuidGroupingPlugin(pluginDbFile)
+        val plugin = UuidGroupingPlugin(pluginDbFile, env.repository)
         val bgScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
         bgScope.launch { plugin.run(env.repository) }
 
