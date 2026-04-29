@@ -13,7 +13,6 @@ import com.roideuniverse.loghound.core.impl.LogRepositoryImpl
 import com.roideuniverse.loghound.database.createLogDataStore
 import com.roideuniverse.loghound.plugins.logcat.LogcatDataPlugin
 import com.roideuniverse.loghound.plugins.logviewer.LogViewerPlugin
-import com.roideuniverse.loghound.plugins.synthetic.SyntheticDataPlugin
 import com.roideuniverse.loghound.plugins.uuidgrouping.UuidGroupingPlugin
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -27,13 +26,14 @@ fun main() = application {
     val dataStore = remember { createLogDataStore(dbFile) }
     val repository = remember { LogRepositoryImpl(dataStore) }
 
-    val uuidGrouping = remember {
-        UuidGroupingPlugin(File(System.getProperty("user.home"), ".loghound/plugins/uuid-grouping.db"))
+    val uuidGrouping = remember(repository) {
+        UuidGroupingPlugin(
+            databaseFile = File(System.getProperty("user.home"), ".loghound/plugins/uuid-grouping.db"),
+            repository = repository,
+        )
     }
 
-    val dataPlugins: List<DataPlugin> = remember {
-        listOf(LogcatDataPlugin(), SyntheticDataPlugin(), uuidGrouping)
-    }
+    val dataPlugins: List<DataPlugin> = remember { listOf(LogcatDataPlugin(), uuidGrouping) }
     val uiPlugins: List<UIPlugin> = remember { listOf(LogViewerPlugin(repository), uuidGrouping) }
 
     val backgroundScope = remember { CoroutineScope(SupervisorJob() + Dispatchers.IO) }

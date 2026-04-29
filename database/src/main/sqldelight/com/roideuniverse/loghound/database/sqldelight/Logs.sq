@@ -41,3 +41,6 @@ LIMIT :lim;
 
 countAll:
 SELECT COUNT(*) FROM logs;
+
+lastInsertRowid:
+SELECT last_insert_rowid();

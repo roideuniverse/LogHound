@@ -28,7 +28,6 @@ To build only one module:
 ./gradlew :plugins:ui:log-viewer:assemble
 ./gradlew :plugins:ui:uuid-grouping:assemble
 ./gradlew :plugins:data:logcat:assemble
-./gradlew :plugins:data:synthetic:assemble
 ```
 
 ## Run the app
@@ -111,6 +110,71 @@ A single test class:
 ./gradlew :app:jvmTest --tests "com.roideuniverse.loghound.e2e.LogViewerE2eTest"
 ```
 
+## Replay or stream logs without the app
+
+`scripts/inject_logs.py` is a small Python 3 tool that writes log entries directly into `~/.loghound/logs.db`. It needs only `python3` — no Gradle, no app process.
+
+```sh
+# Replay a saved logcat capture into the DB
+scripts/inject_logs.py --input session.log
+
+# Stream live captures into the DB without running the app
+adb logcat -v threadtime | scripts/inject_logs.py
+
+# Custom DB path
+scripts/inject_logs.py --db /tmp/test-logs.db --input fixture.log
+```
+
+Then open LogHound — the Log Viewer shows the rows on initial query, and UUID Grouping's data side backfills any new UUIDs from its checkpoint on launch.
+
+**Caveat:** rows added by the script *while* the app is open won't appear live in the UI — the app's `ingested` Flow only fires for in-process appends. Close + reopen the affected tab (or relaunch the app) to pick them up.
+
+The script must be run against a database that already has the LogHound schema. Launching the app once creates `~/.loghound/logs.db`; after that the script can run any time, with or without the app.
+
+### Long captures (hours)
+
+For hours-long captures, two practical concerns:
+
+- **`adb` pipes can break.** A USB hiccup, device reboot, or `adb` server restart will exit `adb logcat` and the pipe closes. A multi-hour capture shouldn't depend on a single pipe staying alive.
+- **DB grows.** A chatty Android device emits 50–500 lines/sec at roughly 150 bytes/row on disk. Multi-hour captures land at hundreds of MB to a few GB in `~/.loghound/logs.db`. SQLite handles it fine — keep an eye with `du -h ~/.loghound/logs.db`.
+
+Recommended robust setup — `tmux` session running a restart-on-disconnect loop:
+
+```sh
+# Start a tmux session so the capture survives closing your terminal
+tmux new -s loghound-capture
+
+# Inside tmux, run a loop that reconnects if adb drops out
+while true; do
+  date "+%F %T  starting capture"
+  adb logcat -v threadtime | scripts/inject_logs.py
+  echo "$(date '+%F %T')  pipe closed — retrying in 5s"
+  sleep 5
+done
+```
+
+Detach with **Ctrl+B then D**. Re-attach later with `tmux attach -t loghound-capture`. Stop the capture cleanly with Ctrl+C inside the loop (the script's `SIGINT` handler flushes pending rows before exiting); the loop's `while true` will then try to restart, so kill the tmux session (`tmux kill-session -t loghound-capture`) when you're truly done.
+
+If you don't want tmux, `nohup` works too:
+
+```sh
+nohup bash -c 'while true; do adb logcat -v threadtime | scripts/inject_logs.py; sleep 5; done' \
+  > /tmp/loghound-injector.log 2>&1 &
+```
+
+### Verifying the capture is working
+
+Three signals, none of which require the app:
+
+1. **The script's own progress output** — every 10,000 rows by default the script prints a line to stderr like `… inserted 120000 rows (3 skipped)`. Tune the cadence with `--progress-every N` (e.g. `--progress-every 1000` to print more frequently for low-traffic devices, or `--progress-every 0` to silence). If you don't see those messages tick by during a long capture, something's stuck.
+2. **Row count via `sqlite3`** — pure read, safe while the script is writing (WAL handles concurrent readers). Run it twice, a minute apart; the number should grow:
+   ```sh
+   sqlite3 ~/.loghound/logs.db 'SELECT COUNT(*) FROM logs'
+   ```
+3. **File size growth** — `du -h ~/.loghound/logs.db`. Should grow over time at roughly 100–500 bytes/row × your device's log rate.
+
+You can also open LogHound at any point during the capture; the Log Viewer's initial query will show whatever was committed up to that moment.
+
 ## Stop / clean
 
 ```sh
@@ -131,7 +195,6 @@ app/                            DI/wiring, window shell, tab management
 plugins/ui/log-viewer/          tail-style log view with filter bar
 plugins/ui/uuid-grouping/       UUID discovery + counts; owns its own SQLite file
 plugins/data/logcat/            real `adb logcat -v threadtime` source
-plugins/data/synthetic/         synthetic test/demo data source
 specs/                          source of truth — read these before changing code
 ```
 

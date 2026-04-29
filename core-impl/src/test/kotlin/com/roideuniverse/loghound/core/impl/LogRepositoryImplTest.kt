@@ -103,6 +103,47 @@ class LogRepositoryImplTest {
     }
 
     @Test
+    fun query_filter_finds_match_older_than_limit_window() = runTest {
+        // Regression for the "click UUID, see nothing" bug. When `query` is called with
+        // a non-empty filter and the matching entry sits older than the latest `limit`
+        // rows in storage, the implementation must iterate backward through pages.
+        val (_, repo) = newRepo()
+        // Insert one rare-marker entry first…
+        repo.append(listOf(entry(message = "RARE-MARKER-SINGLETON")))
+        // …then 600 unrelated entries on top of it.
+        repo.append(List(600) { i -> entry(message = "noise-$i") })
+
+        val matches = repo.query(
+            filter = LogFilter(textSearch = "RARE-MARKER-SINGLETON"),
+            limit = 500,
+        ).entries
+
+        assertEquals(1, matches.size)
+        assertEquals("RARE-MARKER-SINGLETON", matches.single().message)
+    }
+
+    @Test
+    fun query_filter_iterates_past_first_scan_page_to_find_match() = runTest {
+        // Same bug, harder case: the matching entry is older than the first iteration
+        // chunk (SCAN_PAGE_SIZE = 1000 in the impl), so the loop must take a second
+        // selectBefore step to find it.
+        val (_, repo) = newRepo()
+        repo.append(listOf(entry(message = "RARE-MARKER-DEEP")))
+        // Insert 1500 unrelated entries so the marker sits ~1500 rows back from the tail.
+        for (chunk in 0 until 30) {
+            repo.append(List(50) { i -> entry(message = "filler-${chunk}-$i") })
+        }
+
+        val matches = repo.query(
+            filter = LogFilter(textSearch = "RARE-MARKER-DEEP"),
+            limit = 10,
+        ).entries
+
+        assertEquals(1, matches.size)
+        assertEquals("RARE-MARKER-DEEP", matches.single().message)
+    }
+
+    @Test
     fun count_empty_filter_returns_total_rows() = runTest {
         val (_, repo) = newRepo()
         repo.append(List(42) { entry(message = "m-$it") })
