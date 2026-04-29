@@ -77,7 +77,7 @@ plugin {
                 section {
                     row {
                         weight(1f) {
-                            textField(state = filter, placeholder = "Search UUIDs…")
+                            textField(state = filter, placeholder = "Search UUIDs\u2026")
                         }
                         spacer(width = 8)
                         button(
