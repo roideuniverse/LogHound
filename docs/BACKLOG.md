@@ -25,6 +25,14 @@ Conventions:
   Build warning today, will be a hard error in some future Compose Multiplatform release.
   *Size:* S *Tags:* compose-mp, log-viewer
 
+- **Plugin script-load failures are silent** — when a `.kts` plugin fails to compile
+  under the script host (missing import, type error, runtime exception during
+  the `plugin { }` builder), the host writes `[plugin-script] foo.kts failed to load:`
+  to stderr and silently drops the plugin. Users running the bundled native app
+  never see the terminal. Surface load failures as a visible "Plugin failed: foo"
+  entry in the sidebar with the error text in the body.
+  *Size:* M *Tags:* plugin-dsl, ux, error-surfacing
+
 ---
 
 ## Enhancements
@@ -68,6 +76,53 @@ Conventions:
   scroll-up history fetch.
   *Size:* M *Tags:* plugin-dsl, scrolling
 
+- **DSL: tail-following auto-scroll** — Log Viewer auto-scrolls to the latest entry
+  when the user is parked at the bottom and a new entry arrives. The DSL `list`
+  doesn't expose any scroll control, so script-based log viewers can't replicate
+  this. Either add an `autoScrollToBottom` flag on `list`, or expose a
+  `listController` analogous to `tabController` with `requestScrollToBottom()`,
+  `requestScrollToItem(idx)`, and a `firstVisibleIndex` state.
+  *Size:* M *Tags:* plugin-dsl, scrolling
+
+- **Detail tab pagination in scripted plugins** — example UUID Grouping `.kts` queries
+  `repo.query(filter = LogFilter(textSearch = uuid), limit = 500)` once per opened
+  tab. Built-in plugin paginates older entries on scroll-up via `UuidDetailController`
+  with `loadOlder()`. Once the DSL grows the `loadOlder` callback above, port the
+  example script to use it.
+  *Size:* S *Tags:* plugin-dsl, examples
+
+- **Hello DSL plugin: convert to `.kts` example or delete** — `app/.../HelloDsl.kt`
+  was the proof-of-concept demo. Now that we have a real script-loaded plugin, the
+  in-tree Hello DSL is sidebar clutter. Either delete (UUID Grouping script is the
+  better demo) or move it to `examples/plugins/hello.kts` as a minimal starter
+  template that authors can copy.
+  *Size:* S *Tags:* plugin-dsl, cleanup
+
+- **Window state persistence** — sidebar-visible toggle, currently active tab,
+  window size and position all reset on launch. A small SQLite or JSON file in
+  `~/.loghound/state.json` would persist these. Avoid heavy state libraries; a
+  10-line saved-on-close struct is enough.
+  *Size:* S *Tags:* app, ux
+
+- **Plugin enable/disable toggle** — a user can't temporarily disable a loaded
+  `.kts` plugin without removing the file. A right-click menu on the sidebar
+  entry → "Disable" → re-enabled later → makes triage easier when one plugin
+  misbehaves. Can be disk-state in the same `~/.loghound/state.json` as window
+  state.
+  *Size:* M *Tags:* plugin-dsl, ux
+
+- **Logcat disconnect notification** — `LogcatDataPlugin` retries silently on
+  device disconnect (USB unplug, adb server restart). User has no visual signal
+  that the live stream stopped. Status bar text or a sidebar dot would help.
+  Behaviour is already in `behavior.spec.md`; it's just not wired up.
+  *Size:* M *Tags:* logcat, ux
+
+- **CI on pull requests** — no `.github/workflows/` today. A minimal job that
+  runs `:plugin-dsl:test :app:jvmTest --tests "…PluginScriptHostTest" :core-impl:test`
+  on every PR would catch regressions in the DSL contract and the script-host
+  loader without requiring a UI runner.
+  *Size:* S *Tags:* ci, dx
+
 ---
 
 ## Features
@@ -94,6 +149,26 @@ Conventions:
   log streams per source. Touches `plugins/data/logcat`, schema (add
   `device_id` column), and Log Viewer filter syntax (`device:…`).
   *Size:* L *Tags:* logcat, schema
+
+- **Detachable tabs into floating windows** — `behavior.spec.md` lists this as
+  a future plugin shell capability: any tab can be detached by right-click or
+  drag-out, and re-docked by closing the floating window. Touches `app/App.kt`
+  and the tab management infrastructure.
+  *Size:* L *Tags:* app, plugin-shell
+
+- **Export filtered logs to file** — `behavior.spec.md` declares this as a
+  Log Viewer "not yet implemented" action. Should write the currently visible
+  filter result to a `.log` file in user-chosen location. Probably file picker
+  via Compose Multiplatform's file dialog wrappers.
+  *Size:* M *Tags:* log-viewer, export
+
+- **Performance benchmark at scale targets** — `behavior.spec.md` declares
+  ≥ 100K UUIDs / ≥ 50M lines for UUID Grouping and "tens of millions of lines
+  without behavior changes" for the app overall. We have no automated check
+  that we still hit those bars after each refactor. Add a benchmark suite that
+  ingests a synthetic 50M-line corpus, measures backfill time, peak heap, and
+  steady-state memory; record in CI artefacts.
+  *Size:* L *Tags:* tests, performance
 
 ---
 
