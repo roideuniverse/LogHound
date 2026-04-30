@@ -7,6 +7,7 @@ plugins {
 
 dependencies {
     implementation(project(":core-api"))
+    implementation(project(":design"))
     implementation(compose.runtime)
     implementation(compose.foundation)
     implementation(compose.material3)

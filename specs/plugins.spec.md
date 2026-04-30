@@ -107,8 +107,26 @@ plugin re-opens tabs from its own state.
 
 Every plugin renders against a `PluginTheme` — a flat record of colors and text styles (background,
 dividers, row text, tab strip, text field, etc.) that the renderer reads via a Compose
-`CompositionLocal`. The host ships defaults that match LogHound's built-in plugin look (white
-background, monospace 12sp rows, `0xFFCCCCCC` dividers).
+`CompositionLocal`. `PluginTheme`'s defaults all read from a single `LogHoundDesign` design-token
+object that built-in plugins also reference, so a script-loaded plugin and a hand-coded one share
+the same palette and text styles unless either explicitly overrides.
+
+`LogHoundDesign` exposes:
+
+- `Colors.Background`, `Colors.Divider`, `Colors.RowDivider`, `Colors.ToolbarBackground`,
+  `Colors.TabStripBackground`, `Colors.ActiveTabBackground`, `Colors.TextFieldBackground`,
+  `Colors.TextFieldBorder`, `Colors.Placeholder`, `Colors.Secondary` (gray status), `Colors.Primary`
+  (Material blue), `Colors.OnSurface` (near-black body)
+- The Logcat priority palette: `Colors.PriorityVerbose / Debug / Info / Warn / Error / Fatal /
+  Silent`
+- Text styles: `Text.Status` (12sp gray), `Text.Row` (mono 12sp), `Text.Tab` (13sp black),
+  `Text.TabClose` (11sp gray), `Text.Button` (13sp blue), `Text.Field` (13sp black)
+- `colorFor(priority): Color` helper — returns the matching priority color, used by detail rows in
+  log lists
+
+The script host default-imports `LogHoundDesign`, so plugin authors can do
+`text(line, style = LogHoundDesign.Text.Row.copy(color = LogHoundDesign.colorFor(entry.priority)))`
+without imports.
 
 Plugins that want different visuals override per-field:
 

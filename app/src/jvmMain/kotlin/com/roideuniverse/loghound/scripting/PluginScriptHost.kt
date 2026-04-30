@@ -25,6 +25,7 @@ object LogHoundScriptConfig : ScriptCompilationConfiguration({
         "com.roideuniverse.loghound.plugindsl.stateOf",
         "com.roideuniverse.loghound.plugindsl.tabController",
         "com.roideuniverse.loghound.plugindsl.PluginTheme",
+        "com.roideuniverse.loghound.design.LogHoundDesign",
         "com.roideuniverse.loghound.core.LogEntry",
         "com.roideuniverse.loghound.core.LogPriority",
         "com.roideuniverse.loghound.core.LogFilter",

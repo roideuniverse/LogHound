@@ -121,21 +121,10 @@ plugin {
                     }
                 } else {
                     list(items = entries, key = { it.id }) { entry ->
-                        val color = when (entry.priority) {
-                            LogPriority.Verbose -> Color(0xFF666666)
-                            LogPriority.Debug -> Color(0xFF1976D2)
-                            LogPriority.Info -> Color(0xFF388E3C)
-                            LogPriority.Warn -> Color(0xFFF57C00)
-                            LogPriority.Error -> Color(0xFFD32F2F)
-                            LogPriority.Fatal -> Color(0xFFD32F2F)
-                            LogPriority.Silent -> Color(0xFF999999)
-                        }
                         val weight = if (entry.priority == LogPriority.Fatal) FontWeight.Bold
                                      else FontWeight.Normal
-                        val style = TextStyle(
-                            fontFamily = FontFamily.Monospace,
-                            fontSize = 12.sp,
-                            color = color,
+                        val style = LogHoundDesign.Text.Row.copy(
+                            color = LogHoundDesign.colorFor(entry.priority),
                             fontWeight = weight,
                         )
                         text(

@@ -6,6 +6,7 @@ plugins {
 
 dependencies {
     api(project(":core-api"))
+    api(project(":design"))
     api(libs.kotlinx.coroutinesCore)
     api(compose.runtime)
     api(compose.foundation)

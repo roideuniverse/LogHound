@@ -54,6 +54,7 @@ import com.roideuniverse.loghound.core.LogFilter
 import com.roideuniverse.loghound.core.LogPriority
 import com.roideuniverse.loghound.core.LogRepository
 import com.roideuniverse.loghound.core.UIPlugin
+import com.roideuniverse.loghound.design.LogHoundDesign
 
 class LogViewerPlugin(
     private val repository: LogRepository,
@@ -147,9 +148,9 @@ class LogViewerPlugin(
 
         Column(modifier = modifier.fillMaxSize()) {
             PackageUidLookupBar()
-            HorizontalDivider(color = Color(0xFFCCCCCC))
+            HorizontalDivider(color = LogHoundDesign.Colors.Divider)
             FilterBar(query = queryText, onQueryChange = { queryText = it })
-            HorizontalDivider(color = Color(0xFFCCCCCC))
+            HorizontalDivider(color = LogHoundDesign.Colors.Divider)
             Box(modifier = Modifier.fillMaxSize()) {
                 SelectionContainer(modifier = Modifier.fillMaxSize()) {
                     LazyColumn(
@@ -192,16 +193,6 @@ class LogViewerPlugin(
     }
 }
 
-private fun colorFor(priority: LogPriority): Color = when (priority) {
-    LogPriority.Verbose -> Color(0xFF666666)   // gray
-    LogPriority.Debug   -> Color(0xFF1976D2)   // blue
-    LogPriority.Info    -> Color(0xFF388E3C)   // green
-    LogPriority.Warn    -> Color(0xFFF57C00)   // amber
-    LogPriority.Error   -> Color(0xFFD32F2F)   // red
-    LogPriority.Fatal   -> Color(0xFFD32F2F)   // red (bold weight applied below)
-    LogPriority.Silent  -> Color(0xFF999999)
-}
-
 private const val LOAD_OLDER_THRESHOLD = 10
 private const val LOAD_OLDER_PAGE_SIZE = 500
 private const val MAX_IN_MEMORY = 10_000
@@ -218,17 +209,15 @@ private fun LoadingOlderRow() {
     ) {
         CircularProgressIndicator(strokeWidth = 2.dp, modifier = Modifier.width(14.dp))
         Spacer(Modifier.width(8.dp))
-        Text("Loading older…", color = Color(0xFF888888), style = TextStyle(fontSize = 12.sp))
+        Text("Loading older…", style = LogHoundDesign.Text.Status)
     }
 }
 
 @Composable
 private fun LogRow(entry: LogEntry) {
     val weight = if (entry.priority == LogPriority.Fatal) FontWeight.Bold else FontWeight.Normal
-    val style = TextStyle(
-        fontFamily = FontFamily.Monospace,
-        fontSize = 12.sp,
-        color = colorFor(entry.priority),
+    val style = LogHoundDesign.Text.Row.copy(
+        color = LogHoundDesign.colorFor(entry.priority),
         fontWeight = weight,
     )
     val line = "${entry.timestamp}  ${entry.pid} ${entry.tid} ${entry.priority.label}  ${entry.tag}: ${entry.message}"
@@ -244,10 +233,10 @@ private fun LogRow(entry: LogEntry) {
 
 @Composable
 private fun FilterBar(query: String, onQueryChange: (String) -> Unit) {
-    Surface(modifier = Modifier.fillMaxWidth(), color = Color(0xFFF7F7F7)) {
+    Surface(modifier = Modifier.fillMaxWidth(), color = LogHoundDesign.Colors.ToolbarBackground) {
         Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp)) {
             val shape = RoundedCornerShape(4.dp)
-            val style: TextStyle = LocalTextStyle.current.copy(color = Color.Black, fontSize = 13.sp)
+            val style: TextStyle = LocalTextStyle.current.merge(LogHoundDesign.Text.Field)
             BasicTextField(
                 value = query,
                 onValueChange = onQueryChange,
@@ -256,8 +245,8 @@ private fun FilterBar(query: String, onQueryChange: (String) -> Unit) {
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(shape)
-                    .background(Color.White)
-                    .border(1.dp, Color(0xFFCCCCCC), shape)
+                    .background(LogHoundDesign.Colors.TextFieldBackground)
+                    .border(1.dp, LogHoundDesign.Colors.TextFieldBorder, shape)
                     .padding(horizontal = 8.dp, vertical = 6.dp)
                     .testTag(TestTags.FILTER_INPUT),
                 decorationBox = { inner ->
@@ -265,7 +254,7 @@ private fun FilterBar(query: String, onQueryChange: (String) -> Unit) {
                         if (query.isEmpty()) {
                             Text(
                                 "tag:Activity level:W package:mine",
-                                color = Color(0xFFAAAAAA),
+                                color = LogHoundDesign.Colors.Placeholder,
                                 style = style,
                             )
                         }

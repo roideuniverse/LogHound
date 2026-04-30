@@ -33,6 +33,7 @@ plugins {
 }
 
 include(":core-api")
+include(":design")
 include(":database")
 include(":core-impl")
 include(":plugin-dsl")

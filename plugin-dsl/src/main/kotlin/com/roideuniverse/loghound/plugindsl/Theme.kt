@@ -3,29 +3,24 @@ package com.roideuniverse.loghound.plugindsl
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.unit.sp
+import com.roideuniverse.loghound.design.LogHoundDesign
 
 data class PluginTheme(
-    val background: Color = Color.White,
-    val divider: Color = Color(0xFFCCCCCC),
-    val rowDivider: Color = Color(0xFFEEEEEE),
-    val tabStripBackground: Color = Color(0xFFF0F0F0),
-    val activeTabBackground: Color = Color.White,
-    val toolbarBackground: Color = Color(0xFFF7F7F7),
-    val text: TextStyle = TextStyle(fontSize = 12.sp, color = Color(0xFF666666)),
-    val rowText: TextStyle = TextStyle(
-        fontFamily = FontFamily.Monospace,
-        fontSize = 12.sp,
-        color = Color(0xFF222222),
-    ),
-    val tabText: TextStyle = TextStyle(fontSize = 13.sp, color = Color.Black),
-    val closeText: TextStyle = TextStyle(fontSize = 11.sp, color = Color(0xFF666666)),
-    val buttonText: TextStyle = TextStyle(fontSize = 13.sp, color = Color(0xFF1976D2)),
-    val textFieldText: TextStyle = TextStyle(color = Color.Black, fontSize = 13.sp),
-    val textFieldBorder: Color = Color(0xFFCCCCCC),
-    val textFieldBackground: Color = Color.White,
-    val placeholderColor: Color = Color(0xFFAAAAAA),
+    val background: Color = LogHoundDesign.Colors.Background,
+    val divider: Color = LogHoundDesign.Colors.Divider,
+    val rowDivider: Color = LogHoundDesign.Colors.RowDivider,
+    val tabStripBackground: Color = LogHoundDesign.Colors.TabStripBackground,
+    val activeTabBackground: Color = LogHoundDesign.Colors.ActiveTabBackground,
+    val toolbarBackground: Color = LogHoundDesign.Colors.ToolbarBackground,
+    val text: TextStyle = LogHoundDesign.Text.Status,
+    val rowText: TextStyle = LogHoundDesign.Text.Row,
+    val tabText: TextStyle = LogHoundDesign.Text.Tab,
+    val closeText: TextStyle = LogHoundDesign.Text.TabClose,
+    val buttonText: TextStyle = LogHoundDesign.Text.Button,
+    val textFieldText: TextStyle = LogHoundDesign.Text.Field,
+    val textFieldBorder: Color = LogHoundDesign.Colors.TextFieldBorder,
+    val textFieldBackground: Color = LogHoundDesign.Colors.TextFieldBackground,
+    val placeholderColor: Color = LogHoundDesign.Colors.Placeholder,
 )
 
 internal val LocalPluginTheme = compositionLocalOf { PluginTheme() }
