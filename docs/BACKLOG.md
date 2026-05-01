@@ -123,13 +123,26 @@ Conventions:
   loader without requiring a UI runner.
   *Size:* S *Tags:* ci, dx
 
-- **In-app "Clear logs" menu item** — `File → Clear logs…` with a confirmation
-  dialog. Deletes `~/.loghound/logs.db` (+ `-shm` / `-wal`) and offers a checkbox
-  for "also wipe plugin state" that recursively clears `~/.loghound/plugins/*.db`
-  (preserving `.kts` files). Should close the existing `LogDataStore` connection
-  cleanly first, then reopen on a fresh schema. Today's workaround is
-  `rm -f ~/.loghound/logs.db*` while the app is closed.
-  *Size:* S *Tags:* app, ux
+- **In-app "Clear logs" menu item + plugin clear-store hook** — `File → Clear
+  logs…` with a confirmation dialog. Deletes `~/.loghound/logs.db` (+ `-shm` /
+  `-wal`) after closing the live `LogDataStore` connection, then reopens on a
+  fresh schema. Plugins also need to drop their derived state when the source
+  is wiped — otherwise e.g. UUID Grouping ends up with UUIDs pointing at log
+  IDs that no longer exist. Two pieces:
+
+  1. Add `suspend fun clearStore() = Unit` to the `DataPlugin` interface
+     (default no-op for plugins with no persistent state). Built-in
+     `UuidGroupingPlugin` overrides it to drop its `uuids.db`.
+  2. For DSL plugins: either an `onClear { … }` block in the `plugin { }`
+     builder, OR have the host auto-wipe `pluginDataDir()` for any plugin
+     that opted into it (cleaner — convention not callback). Plugins
+     observe via a "store cleared" signal so they can re-initialise.
+
+  Confirmation dialog should show what will be wiped (logs.db size, list of
+  plugin DBs by id) so the user isn't surprised. Today's workaround is
+  `rm -f ~/.loghound/logs.db*` and `rm -rf ~/.loghound/plugins/*.db*` while
+  the app is closed.
+  *Size:* M *Tags:* app, ux, plugin-dsl, core-api
 
 ---
 
