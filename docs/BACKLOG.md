@@ -123,6 +123,14 @@ Conventions:
   loader without requiring a UI runner.
   *Size:* S *Tags:* ci, dx
 
+- **In-app "Clear logs" menu item** — `File → Clear logs…` with a confirmation
+  dialog. Deletes `~/.loghound/logs.db` (+ `-shm` / `-wal`) and offers a checkbox
+  for "also wipe plugin state" that recursively clears `~/.loghound/plugins/*.db`
+  (preserving `.kts` files). Should close the existing `LogDataStore` connection
+  cleanly first, then reopen on a fresh schema. Today's workaround is
+  `rm -f ~/.loghound/logs.db*` while the app is closed.
+  *Size:* S *Tags:* app, ux
+
 ---
 
 ## Features
