@@ -37,6 +37,34 @@ Conventions:
 
 ## Enhancements
 
+- **FTS5 index on `logs.message` for fast substring filter** — `LogFilter.textSearch`
+  (and the script's UUID detail-tab query) is the dominant slow path at scale:
+  `LogRepositoryImpl.query` scans pages of 1000 rows and applies `filter.matches`
+  in Kotlin until it collects `limit` matches. At 6M rows, opening a UUID detail
+  tab can take many seconds.
+
+  **Low-count UUIDs are the worst case**, not the best — a UUID with 3 total
+  occurrences in 6M rows never reaches the 500-match limit, so the scan walks
+  the entire DB before returning. High-count UUIDs at least short-circuit early.
+
+  The fix is `behavior.spec.md`'s noted follow-up — an FTS5 virtual table on
+  the message column. Xerial JDBC ships FTS5; SQLDelight can either generate
+  against an FTS5 schema or we hand-write the queries. Plumbing:
+  `selectByMessageMatch(query, limit)` + a trigger keeping the FTS table in
+  sync on insert. Sub-millisecond detail-tab loads at any scale, including the
+  sparse-match case.
+  *Size:* L *Tags:* logs, sql, performance, fts
+
+- **UUID Grouping: store per-UUID `log_id` index, not just last** — paired with
+  (or alternative to) the FTS path. The built-in plugin already scans every log
+  line for UUIDs during backfill; right now it records `count` and `last_log_id`
+  per UUID. If it instead stored every (uuid, log_id) match in a table, opening
+  a detail tab is an indexed `SELECT log_id FROM uuid_log WHERE uuid = ?` plus a
+  `selectByIds(...)` against the main logs DB. Constant-time, no scan.
+  Disk cost: ~16 B per UUID occurrence; at 6M lines × 1 UUID/line = ~96 MB.
+  Acceptable for the speedup but real. Wider FTS solution is more general.
+  *Size:* M *Tags:* uuid-grouping, performance, sql
+
 - **UUID Grouping backfill: cut per-row allocation** — `UuidGroupingPlugin.backfill()`
   hydrates a full `LogEntry` per row scanned (id, timestamp, pid, tid, priority, tag,
   message, packageName). At 6M rows this is the dominant source of GC churn during
