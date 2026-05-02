@@ -55,15 +55,13 @@ Conventions:
   sparse-match case.
   *Size:* L *Tags:* logs, sql, performance, fts
 
-- **UUID Grouping: store per-UUID `log_id` index, not just last** — paired with
-  (or alternative to) the FTS path. The built-in plugin already scans every log
-  line for UUIDs during backfill; right now it records `count` and `last_log_id`
-  per UUID. If it instead stored every (uuid, log_id) match in a table, opening
-  a detail tab is an indexed `SELECT log_id FROM uuid_log WHERE uuid = ?` plus a
-  `selectByIds(...)` against the main logs DB. Constant-time, no scan.
-  Disk cost: ~16 B per UUID occurrence; at 6M lines × 1 UUID/line = ~96 MB.
-  Acceptable for the speedup but real. Wider FTS solution is more general.
-  *Size:* M *Tags:* uuid-grouping, performance, sql
+- ~~**UUID Grouping: store per-UUID `log_id` index, not just last**~~ — **Done.**
+  `uuid_log(uuid, log_id PK)` populated during backfill + ingest;
+  `UuidDetailController` looks up via `selectLogIdsForUuidDesc` then
+  `LogRepository.queryByIds(...)`. Constant-time per UUID, no main-DB scan.
+  Existing DBs auto-rebuild the per-occurrence table on next launch (one-shot
+  cost paid the first time the upgraded plugin sees an old DB).
+  Wider FTS path below still relevant for arbitrary `LogFilter.textSearch` queries.
 
 - **UUID Grouping backfill: cut per-row allocation** — `UuidGroupingPlugin.backfill()`
   hydrates a full `LogEntry` per row scanned (id, timestamp, pid, tid, priority, tag,

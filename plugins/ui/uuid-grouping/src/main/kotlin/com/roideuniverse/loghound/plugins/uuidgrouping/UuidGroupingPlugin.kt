@@ -106,6 +106,7 @@ class UuidGroupingPlugin(
                     for (entry in page.entries) {
                         for (u in UuidExtractor.findAll(entry.message)) {
                             q.upsert(uuid = u, delta = 1, logId = entry.id)
+                            q.insertOccurrence(uuid = u, logId = entry.id)
                         }
                     }
                     q.setMeta(META_LAST_SCANNED_ID, maxId.toString())
@@ -135,6 +136,7 @@ class UuidGroupingPlugin(
                     for (entry in batch) {
                         for (u in UuidExtractor.findAll(entry.message)) {
                             q.upsert(uuid = u, delta = 1, logId = entry.id)
+                            q.insertOccurrence(uuid = u, logId = entry.id)
                         }
                     }
                     q.setMeta(META_LAST_SCANNED_ID, maxId.toString())
@@ -163,7 +165,7 @@ class UuidGroupingPlugin(
         fun openDetail(uuid: String) {
             if (uuid !in openedUuids) {
                 openedUuids.add(uuid)
-                val controller = UuidDetailController(uuid, repository)
+                val controller = UuidDetailController(uuid, repository, db.uuidsQueries)
                 controllers[uuid] = controller
                 controller.start(coroutineScope)
             }

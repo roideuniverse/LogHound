@@ -55,6 +55,11 @@ internal class SqlDelightLogDataStore(private val db: LogHoundDb) : LogDataStore
         queries.selectAfter(afterId, limit.toLong()).executeAsList().map { it.toLogEntry() }
     }
 
+    override suspend fun selectByIds(ids: Collection<Long>): List<LogEntry> = withContext(Dispatchers.IO) {
+        if (ids.isEmpty()) return@withContext emptyList()
+        queries.selectByIds(ids).executeAsList().map { it.toLogEntry() }
+    }
+
     override suspend fun countAll(): Long = withContext(Dispatchers.IO) {
         queries.countAll().executeAsOne()
     }

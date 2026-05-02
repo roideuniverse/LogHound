@@ -110,6 +110,9 @@ class LogRepositoryImpl(
         const val SCAN_PAGE_SIZE = 1_000
     }
 
+    override suspend fun queryByIds(ids: Collection<Long>): List<LogEntry> =
+        dataStore.selectByIds(ids)
+
     override suspend fun count(filter: LogFilter): Long {
         if (filter == LogFilter()) return dataStore.countAll()
         // Non-empty filter: stream forward via cursor and count matches in Kotlin.

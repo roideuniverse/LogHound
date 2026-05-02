@@ -39,6 +39,12 @@ WHERE id > :afterId
 ORDER BY id ASC
 LIMIT :lim;
 
+selectByIds:
+SELECT *
+FROM logs
+WHERE id IN ?
+ORDER BY id ASC;
+
 countAll:
 SELECT COUNT(*) FROM logs;
 

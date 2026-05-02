@@ -13,5 +13,11 @@ interface LogDataStore {
     suspend fun selectBefore(beforeId: Long, limit: Int): List<LogEntry>
     suspend fun selectAfter(afterId: Long, limit: Int): List<LogEntry>
 
+    /**
+     * Fetch the entries with the given ids, ordered ASC by id.
+     * Empty input returns empty. Missing ids are silently skipped.
+     */
+    suspend fun selectByIds(ids: Collection<Long>): List<LogEntry>
+
     suspend fun countAll(): Long
 }

@@ -14,5 +14,13 @@ interface LogRepository {
 
     suspend fun count(filter: LogFilter = LogFilter()): Long
 
+    /**
+     * Fetch the entries with the given ids, ordered ASC by id. Empty input
+     * returns empty. Useful for callers that already have a precomputed list of
+     * matching log ids (e.g. UUID Grouping's per-UUID index) and want to skip
+     * the page-by-page substring scan that [query] performs.
+     */
+    suspend fun queryByIds(ids: Collection<Long>): List<LogEntry>
+
     val ingested: Flow<List<LogEntry>>
 }
