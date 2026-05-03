@@ -193,24 +193,43 @@ Conventions:
   *Size:* L *Tags:* plugin-dsl, dx
 
 - **Multi-device support** — connect to more than one ADB device at once and
-  keep their streams distinguishable end-to-end. Three layers:
+  keep their streams distinguishable end-to-end. Four layers:
 
   1. **Data:** `LogcatDataPlugin` runs an `adb logcat -v threadtime` per
      connected device (poll `adb devices` for the active set, restart on
-     disconnect). `logs.message` schema gains a `device_id TEXT` column;
-     ingest writes the source serial. Index on `(device_id, id)` for
-     scoped scans.
+     disconnect). `logs` schema gains a `device_id TEXT` column; ingest
+     writes the source serial. Index on `(device_id, id)` for scoped scans.
   2. **Filter:** `LogFilter` gains a `deviceId: String?` field; filter bar
      parses `device:<serial-or-name>`. Existing clauses (`tag:`, `level:`)
-     compose AND as today.
+     compose AND as today. Built-in plugins and DSL scripts both reach
+     this through `repo.query(filter = LogFilter(deviceId = …))`.
   3. **UI:** Log Viewer presents per-device sub-tabs (master "All" plus one
      per connected device, similar pattern to UUID Grouping's drill-down).
      Each sub-tab applies an implicit `device:` filter and the user's
      explicit filter on top. Closing a tab leaves the device connected;
      reopening from the device list restores it.
+  4. **Plugin SDK surface:** plugins (built-in *and* DSL `.kts`) need
+     first-class device awareness, not have to re-derive it. Add:
+
+     - `data class Device(val id: String, val label: String)` to `core-api`
+     - `LogRepository.devices: Flow<Set<Device>>` — observable connected
+       set. Plugins observe via `repo.devices.collect { … }` or
+       `snapshotFlow` adapter.
+     - `LogFilter.deviceId` (already in layer 2) — same field plugins use.
+     - DSL `.kts` plugins inherit all of the above through the existing
+       script-host default imports (`LogFilter`, `LogRepository`).
+     - Optional: a `deviceController` analogous to `tabController` for
+       plugins that want per-device sub-tabs in the same shape that
+       UUID Grouping uses today. Adds three states (open devices, active,
+       activate/close methods); reuse the existing `tabs(...)` verb so
+       no new UI primitive needed.
+
+  This way a plugin author can write a Network Tracer or Performance
+  Profiler that automatically scopes per device with no special code,
+  matching the built-in Log Viewer's behavior.
 
   Unlocks the per-device UUID Grouping filter below.
-  *Size:* XL *Tags:* logcat, schema, log-viewer, ux
+  *Size:* XL *Tags:* logcat, schema, log-viewer, plugin-dsl, ux
 
 - **UUID Grouping: filter by device** — once `logs` carries a `device_id`,
   the plugin's `uuid_log` table should mirror it (`(uuid, log_id, device_id)`
