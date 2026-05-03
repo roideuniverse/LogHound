@@ -80,6 +80,15 @@ Conventions:
   no other plugin uses today. Wait until a second consumer would benefit.
   *Size:* L *Tags:* uuid-grouping, performance, sql, architecture
 
+- **Use `value class` for ID types** — Kotlin value classes (with `@JvmInline`)
+  are zero-cost at runtime and prevent passing a `tag` where a `deviceId` is
+  expected. Convention going forward: any new identifier type should be a
+  `value class` from day one. `DeviceId(val raw: String)` lands with the
+  multi-device data layer (no migration). Wholesale migration of existing
+  `Long` log ids → `LogId` and `String` UUIDs → `Uuid` touches every call
+  site and is best done as a separate slice.
+  *Size:* M (full sweep), S (per type going forward) *Tags:* core-api, types
+
 - **Migrate Compose deps to `libs.versions.toml`** — replace `compose.runtime`,
   `compose.foundation`, `compose.material3`, `compose.ui`, and `compose.desktop.uiTestJUnit4`
   inline references with catalog entries. Avoids IDE warnings about string-style
