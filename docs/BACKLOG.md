@@ -194,8 +194,18 @@ Conventions:
 
 - **Multi-device support** — connect to more than one ADB device and label
   log streams per source. Touches `plugins/data/logcat`, schema (add
-  `device_id` column), and Log Viewer filter syntax (`device:…`).
+  `device_id` column on `logs`), and Log Viewer filter syntax (`device:…`).
+  Unlocks the per-device UUID Grouping filter below.
   *Size:* L *Tags:* logcat, schema
+
+- **UUID Grouping: filter by device** — once `logs` carries a `device_id`,
+  the plugin's `uuid_log` table should mirror it (`(uuid, log_id, device_id)`
+  with index on `(device_id, uuid)`). Master view gets a device picker that
+  scopes both the `uuids`-summary list and the per-UUID detail. Useful when
+  a single workflow correlates across devices and you want to see only the
+  one you care about. Depends on multi-device support — without `device_id`,
+  there's nothing to filter on.
+  *Size:* M *Tags:* uuid-grouping, ux *Depends:* multi-device support
 
 - **Detachable tabs into floating windows** — `behavior.spec.md` lists this as
   a future plugin shell capability: any tab can be detached by right-click or
