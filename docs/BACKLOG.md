@@ -192,11 +192,25 @@ Conventions:
   is fast enough that a relaunch is barely noticeable today.
   *Size:* L *Tags:* plugin-dsl, dx
 
-- **Multi-device support** — connect to more than one ADB device and label
-  log streams per source. Touches `plugins/data/logcat`, schema (add
-  `device_id` column on `logs`), and Log Viewer filter syntax (`device:…`).
+- **Multi-device support** — connect to more than one ADB device at once and
+  keep their streams distinguishable end-to-end. Three layers:
+
+  1. **Data:** `LogcatDataPlugin` runs an `adb logcat -v threadtime` per
+     connected device (poll `adb devices` for the active set, restart on
+     disconnect). `logs.message` schema gains a `device_id TEXT` column;
+     ingest writes the source serial. Index on `(device_id, id)` for
+     scoped scans.
+  2. **Filter:** `LogFilter` gains a `deviceId: String?` field; filter bar
+     parses `device:<serial-or-name>`. Existing clauses (`tag:`, `level:`)
+     compose AND as today.
+  3. **UI:** Log Viewer presents per-device sub-tabs (master "All" plus one
+     per connected device, similar pattern to UUID Grouping's drill-down).
+     Each sub-tab applies an implicit `device:` filter and the user's
+     explicit filter on top. Closing a tab leaves the device connected;
+     reopening from the device list restores it.
+
   Unlocks the per-device UUID Grouping filter below.
-  *Size:* L *Tags:* logcat, schema
+  *Size:* XL *Tags:* logcat, schema, log-viewer, ux
 
 - **UUID Grouping: filter by device** — once `logs` carries a `device_id`,
   the plugin's `uuid_log` table should mirror it (`(uuid, log_id, device_id)`
