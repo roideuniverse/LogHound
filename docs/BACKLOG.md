@@ -207,16 +207,17 @@ Conventions:
   1. **Data:** `LogcatDataPlugin` runs an `adb logcat -v threadtime` per
      connected device (poll `adb devices` for the active set, restart on
      disconnect). `logs` schema gains a `device_id TEXT NOT NULL` column,
-     and `LogEntry.deviceId: String` (non-null) — every log entry has a
-     source. Implications:
+     and `LogEntry.deviceId: DeviceId` (value class, non-null) — every log
+     entry has a source. Implications:
      - **File ingest** (open a saved logcat file, watch a growing file)
-       synthesises a deviceId from the file path: e.g. `file:session.log`
-       or a hash. The user can rename via the device list.
+       synthesises a deviceId from the file path (e.g. `file:session.log`).
+       The user can rename via the device list.
      - **`inject_logs.py`** gains a required `--device-id <id>` flag with
        a sensible default (e.g. `inject:<filename>`).
-     - **Migration** of existing rows: `ALTER TABLE logs ADD COLUMN
-       device_id TEXT NOT NULL DEFAULT 'legacy'` so the column is filled
-       for pre-multi-device entries; the user can rename `legacy` later.
+     - Existing `~/.loghound/logs.db` from before this change is wiped at
+       upgrade — fresh schema, no migration code. Document the one-time
+       `rm -f ~/.loghound/logs.db*` step in the release notes for this
+       change.
      - Index on `(device_id, id)` for scoped scans.
   2. **Filter:** `LogFilter` gains a `deviceId: String?` field; filter bar
      parses `device:<serial-or-name>`. Existing clauses (`tag:`, `level:`)
