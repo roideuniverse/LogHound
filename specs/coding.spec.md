@@ -17,7 +17,9 @@ The project is a multi-module Gradle project. Confirmed modules:
 - **core-api** — domain module. Interfaces, data models, and the plugin API contract only. No implementations, no UI, no SQL. Everything else depends on this; this depends on nothing in the project. Defines `LogRepository` — the high-level domain contract for log access.
 - **database** — persistence layer. Owns the SQLDelight schema, generated code, and the `LogDataStore` interface plus its SQLDelight + SQLite implementation. Depends only on `core-api`. **Plugins that need raw / lower-level data access depend on this module directly**; plugins that only need domain operations stay on `core-api`.
 - **core-impl** — non-persistence implementations of `core-api` contracts. Currently: `LogRepositoryImpl` (wraps a `LogDataStore`). Other future cross-cutting implementations land here. Depends on `core-api` and `database`. Plugins do **not** depend on this module.
-- **app** — DI/wiring layer. Assembles and connects implementations, registers plugins, owns the window shell, tab management, and theme. Depends on `core-api`, `database`, `core-impl`, and on each registered plugin module.
+- **design** — single source of truth for visual tokens (colors, text styles, priority palette, `colorFor(priority)`). Both built-in plugins and the DSL plugin theme reference `LogHoundDesign.*` instead of inlining hex codes. Depends only on `core-api` (for `LogPriority`) plus Compose UI for `Color` / `TextStyle`.
+- **plugin-dsl** — small DSL for "vibe-coded" plugins that load from disk as `.kts` scripts. Provides the `plugin { … }` builder, ~13 verbs (`column`, `row`, `text`, `list`, `tabs`, `clickable`, …), the `PluginTheme` + override builder, and a `tabController` for sub-tab navigation. Depends on `core-api` and `design`. The script host that loads `.kts` files at app launch lives in `app/.../scripting/PluginScriptHost.kt`.
+- **app** — DI/wiring layer. Assembles and connects implementations, registers plugins, owns the window shell, tab management, theme, and the script host. Depends on `core-api`, `database`, `core-impl`, `plugin-dsl`, and on each registered plugin module.
 - **plugins/ui/&lt;plugin-name&gt;** — one Gradle module per **UI** plugin (e.g. `plugins/ui/log-viewer`). Each module contains exactly one `UIPlugin` implementation plus its private supporting code.
 - **plugins/data/&lt;plugin-name&gt;** — one Gradle module per **data** plugin (e.g. `plugins/data/logcat`). Each module contains exactly one `DataPlugin` implementation — the source-reading + parsing + batching code that produces `LogEntry` and writes them to `LogRepository`.
 
@@ -88,6 +90,9 @@ interface LogRepository {
 
     suspend fun count(filter: LogFilter = LogFilter()): Long
 
+    /** Fetch the entries with the given ids, ordered ASC by id. */
+    suspend fun queryByIds(ids: Collection<Long>): List<LogEntry>
+
     val ingested: Flow<List<LogEntry>>
 }
 ```
@@ -131,9 +136,20 @@ interface LogDataStore {
     suspend fun selectBefore(beforeId: Long, limit: Int): List<LogEntry>
     suspend fun selectAfter(afterId: Long, limit: Int): List<LogEntry>
 
+    /** Fetch entries with the given ids, ordered ASC. Missing ids skipped silently. */
+    suspend fun selectByIds(ids: Collection<Long>): List<LogEntry>
+
     suspend fun countAll(): Long
 }
 ```
+
+**`queryByIds` / `selectByIds`** are the constant-time path used by callers
+that already have a precomputed list of matching log ids. The UUID Grouping
+plugin uses this to skip the page-by-page substring scan that
+`query(filter = LogFilter(textSearch = uuid))` would do otherwise — its
+own `uuid_log` table records every (uuid, log_id) match, so detail-tab
+opens are an indexed lookup followed by `queryByIds(ids)` for the entries.
+Other plugins building secondary indexes can reuse the same pattern.
 
 `insert` returning the id-populated entries is load-bearing: subscribers of `LogRepository.ingested` need real ids on every emitted `LogEntry`, otherwise UI keys (`LazyColumn(items, key = { it.id })`) collide. The SQLDelight implementation reads `last_insert_rowid()` once at the end of the insert transaction and back-fills the contiguous id range onto the input list.
 
