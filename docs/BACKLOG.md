@@ -173,15 +173,44 @@ Conventions:
   - Default session name is the start timestamp (`2026-05-05 14:32`);
     user can rename in the picker. Optional one-line description.
 
-  **UI:**
-  - Status bar shows current session name (rename inline). "End session"
-    button next to it; one click → confirm dialog → archive + reset.
-  - A new built-in "Session Archives" plugin in the sidebar lists past
-    sessions with date / line count / size on disk. Click an archive →
-    opens an Archive sub-tab that mirrors Log Viewer's UI but reads from
-    the archive's `logs.db` read-only. Closing returns to live.
-  - Live ingest never stops — adb keeps streaming into the live DB even
-    while the user browses an archive. The user just isn't looking at it.
+  **UI** (mirrors the multi-device pill pattern):
+
+  *Status-bar session pill* — always visible, bottom of the window
+  beside the device pill. Format: `⏱ <name> · <duration> · <line-count>
+  [▾]`. Click `[▾]` → quick menu with: current session details (name
+  editable inline, started-at, lines, size, devices), an `End & Start
+  New Session` button, and a "Recent archives" list (3-5 most recent)
+  with a `Browse all archives…` link.
+
+  *Sessions sidebar plugin* — full management surface. Two sections:
+  - **Current** — name (editable), started_at, line count, size on
+    disk, contributing devices, primary actions (`End & Archive`,
+    `Cancel & Reset` as escape-hatch for "drop without archiving").
+  - **Archived sessions** — searchable, sortable list. Each row:
+    name, start→end timestamps, duration, line count, size, device
+    count. Per-row actions: `Open` · `Rename` · `Export…` · `Delete`.
+    "Export" zips the archive directory for sharing/backup.
+
+  *Archive sub-tabs* — clicking `Open` on an archive opens a read-only
+  sub-tab inside the Sessions plugin (same `tabController` + `tabs`
+  pattern as UUID Grouping). The sub-tab reuses the Log Viewer UI but
+  binds to the archive's `logs.db` instead of the live one, with
+  rendering dimmed/italic and a banner reading
+  `⚠ Viewing archive · <date range> · <line count>`. Multiple archives
+  can be open in parallel as sibling sub-tabs.
+
+  *End & Start New confirm dialog* — preview of what will be archived
+  (line count, size), an editable name field pre-filled with the
+  current session's name, and a reminder that "ADB keeps streaming" so
+  the user knows ingest doesn't pause.
+
+  *Empty/first-launch state* — Sessions plugin shows "This is your
+  first session…" guidance plus "Archived sessions: None yet." Status
+  bar shows `⏱ New session · 0 lines`.
+
+  *Live ingest never stops* — adb keeps writing to the live DB even
+  while the user browses an archive. Switching back to the live tab
+  resumes the user's live view of accumulated lines.
 
   **Plugin SDK:**
   - Reuses the clear-store hook (`DataPlugin.clearStore()`) — fired when
