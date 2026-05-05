@@ -158,6 +158,52 @@ Conventions:
   loader without requiring a UI runner.
   *Size:* S *Tags:* ci, dx
 
+- **Sessions: end & archive, load on demand** — live `logs.db` only ever
+  contains the *current* session. "End session" snapshots the live state
+  to disk and resets to empty. Past sessions are browseable on explicit
+  demand, never mixed into the live view.
+
+  **Data layer:**
+  - `sessions` registry table (`id`, `name`, `started_at`, `ended_at`,
+    `archive_dir`) in a small `~/.loghound/sessions.db`.
+  - "End session" copies `~/.loghound/logs.db` to
+    `~/.loghound/archives/<session-id>/logs.db`, also copies each
+    plugin's `~/.loghound/plugins/<id>.db` into the archive dir, then
+    truncates the live DB and the plugin DBs via the clear-store hook.
+  - Default session name is the start timestamp (`2026-05-05 14:32`);
+    user can rename in the picker. Optional one-line description.
+
+  **UI:**
+  - Status bar shows current session name (rename inline). "End session"
+    button next to it; one click → confirm dialog → archive + reset.
+  - A new built-in "Session Archives" plugin in the sidebar lists past
+    sessions with date / line count / size on disk. Click an archive →
+    opens an Archive sub-tab that mirrors Log Viewer's UI but reads from
+    the archive's `logs.db` read-only. Closing returns to live.
+  - Live ingest never stops — adb keeps streaming into the live DB even
+    while the user browses an archive. The user just isn't looking at it.
+
+  **Plugin SDK:**
+  - Reuses the clear-store hook (`DataPlugin.clearStore()`) — fired when
+    the host ends a session. Plugins drop their derived state; the new
+    session starts clean.
+  - For plugins that want to view archives (UUID Grouping in archive
+    mode, etc.), the host opens the archive's plugin DB read-only and
+    passes it to the plugin via the Archive sub-tab path. Most plugins
+    can ignore archive viewing initially — only the Archive Viewer
+    plugin needs to render historical data.
+
+  **Boundaries:**
+  - Sessions are orthogonal to devices: an archive can contain logs from
+    multiple devices; a single device contributes to whichever session
+    is live when its lines arrive.
+  - V1 shows live OR an archive at a time, not both side-by-side. Cross-
+    session comparison is a future detached-window enhancement.
+  - Archives are read-only — no editing, no resuming. Delete via the
+    picker if disk fills up.
+
+  *Size:* L *Tags:* sessions, app, plugin-dsl, core-api, ux
+
 - **In-app "Clear logs" menu item + plugin clear-store hook** — `File → Clear
   logs…` with a confirmation dialog. Deletes `~/.loghound/logs.db` (+ `-shm` /
   `-wal`) after closing the live `LogDataStore` connection, then reopens on a
