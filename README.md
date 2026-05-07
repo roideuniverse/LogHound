@@ -228,13 +228,17 @@ plugin {
 }
 ```
 
-The DSL exposes ~13 verbs (`column`, `row`, `list`, `text`, `textField`, `button`, `clickable`, `tabs`, …) plus a `theme { … }` builder for visual overrides. See [`specs/plugins.spec.md`](specs/plugins.spec.md) for the full surface and [`examples/plugins/uuid-grouping.kts`](examples/plugins/uuid-grouping.kts) for a worked example that mirrors the built-in UUID Grouping plugin (master list + sort toggle + per-UUID detail tabs).
+The DSL exposes ~13 verbs (`column`, `row`, `list`, `text`, `textField`, `button`, `clickable`, `tabs`, …) plus a `theme { … }` builder for visual overrides. See [`specs/plugins.spec.md`](specs/plugins.spec.md) for the full surface. Two worked examples in [`examples/plugins/`](examples/plugins/):
+
+- [`hello.kts`](examples/plugins/hello.kts) — smallest possible plugin, ~25 lines. Streams the last 50 log lines into a list. Use as a starter template.
+- [`uuid-grouping.kts`](examples/plugins/uuid-grouping.kts) — full clone of the built-in UUID Grouping plugin (master list + search + sort toggle + per-UUID detail tabs with priority-coded log lines).
 
 Drop a script in:
 
 ```sh
 mkdir -p ~/.loghound/plugins
-cp examples/plugins/uuid-grouping.kts ~/.loghound/plugins/
+cp examples/plugins/hello.kts ~/.loghound/plugins/        # starter
+cp examples/plugins/uuid-grouping.kts ~/.loghound/plugins/  # full demo
 ```
 
-Then relaunch — the new plugin appears in the sidebar under whatever `name` the script declared.
+Then relaunch — each plugin appears in the sidebar under whatever `name` the script declared.

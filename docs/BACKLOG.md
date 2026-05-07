@@ -126,12 +126,10 @@ Conventions:
   example script to use it.
   *Size:* S *Tags:* plugin-dsl, examples
 
-- **Hello DSL plugin: convert to `.kts` example or delete** — `app/.../HelloDsl.kt`
-  was the proof-of-concept demo. Now that we have a real script-loaded plugin, the
-  in-tree Hello DSL is sidebar clutter. Either delete (UUID Grouping script is the
-  better demo) or move it to `examples/plugins/hello.kts` as a minimal starter
-  template that authors can copy.
-  *Size:* S *Tags:* plugin-dsl, cleanup
+- ~~**Hello DSL plugin: convert to `.kts` example or delete**~~ — **Done.**
+  Moved to `examples/plugins/hello.kts` as a ~25-line starter template
+  alongside the full `uuid-grouping.kts`. In-tree `HelloDsl.kt` and its
+  `main.kt` registration removed. README points at both examples.
 
 - **Window state persistence** — sidebar-visible toggle, currently active tab,
   window size and position all reset on launch. A small SQLite or JSON file in
