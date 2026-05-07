@@ -1,23 +1,80 @@
 # LogHound Backlog
 
-Lightweight tracker for things noted but not scheduled. Each entry: a one-line title,
-the context that motivated it, and rough size. Promote items into GitHub issues when
-they're ready to work on (drafts can live in `docs/issue-drafts/` first).
+Lightweight tracker for things noted but not scheduled. Each entry: a title,
+the context that motivated it, and rough size. Most entries are short; entries
+that are ready to file as a GitHub issue can be longer (full repro, fix paths,
+acceptance criteria) so `gh issue create --body-file` can pull them straight.
 
 Conventions:
 - **Size:** S (under an hour), M (afternoon), L (multi-session), XL (cross-cutting)
 - **Tags** in italics — module, area, or theme
+- A leading `~~` strikethrough marks "done" entries; keep them as a record
 
 ---
 
 ## Bugs
 
-- **LogViewer scrollToItem race in tests** — `LogViewerE2eTest.typing_filter_…` fails
-  with `performMeasureAndLayout called during measure layout` when `performTextInput`
-  fires multiple filter changes back-to-back. Pre-existing; surfaced once the
-  UuidGroupingE2eTest compile error was fixed. Three fix paths in the issue draft
-  (requestScrollToItem / withFrameNanos / snapshotFlow). Real-app behavior unaffected.
-  See [`docs/issue-drafts/log-viewer-scroll-race.md`](issue-drafts/log-viewer-scroll-race.md).
+- **LogViewer scrollToItem race in tests** — `LogViewerE2eTest.typing_filter_…`
+  consistently fails with:
+
+  ```
+  java.lang.IllegalArgumentException: performMeasureAndLayout called during measure layout
+    at androidx.compose.ui.node.MeasureAndLayoutDelegate.measureAndLayout-0kLqBqw
+    at androidx.compose.foundation.lazy.LazyListState.snapToItemIndexInternal
+    at androidx.compose.foundation.lazy.LazyListState$scrollToItem$2.invokeSuspend
+  ```
+
+  The crash originates from one of `LogViewerPlugin.content`'s two
+  `LaunchedEffect(filter)` blocks calling `listState.scrollToItem(entries.lastIndex)`
+  while a Compose measure pass is already in flight. Compose's reentrancy guard
+  rejects the nested layout request.
+
+  **Why it surfaces in tests but not in normal use.** In normal use the user types
+  one character every ~100ms; each character triggers a filter change, query,
+  `entries` mutation, and a scroll, but they land in distinct frames so layout
+  passes don't overlap. In the test, `compose.onNodeWithTag(TestTags.FILTER_INPUT)
+  .performTextInput("level:W")` types all 7 characters back-to-back, synchronously.
+  Each character cancels the in-flight `LaunchedEffect(filter)` and starts a new
+  one; coroutines from these effects pile up. When coroutine N's `scrollToItem`
+  runs, the main thread is still inside a layout pass driven by coroutine N-1's
+  `entries` mutation. The reentrancy guard fires.
+
+  **Reproduction:**
+
+  ```sh
+  ./gradlew :app:jvmTest --tests \
+    "com.roideuniverse.loghound.e2e.LogViewerE2eTest.typing_filter_restricts_visible_rows_to_matches"
+  ```
+
+  Consistently failing on Compose Multiplatform 1.10.3. Other tests in the same
+  class (passing initial state, etc.) pass — only the rapid-typing path triggers
+  the race.
+
+  **Affected code.** `plugins/ui/log-viewer/src/main/kotlin/com/roideuniverse/loghound/plugins/logviewer/LogViewerPlugin.kt`,
+  two `scrollToItem` call sites:
+  - Line ~80 — inside `LaunchedEffect(filter)` after the initial query
+  - Line ~100 — inside the ingested-collect loop, when `wasAtBottom`
+
+  Both are reachable during the test's typing storm.
+
+  **Proposed fixes (pick one):**
+
+  1. **`requestScrollToItem`** — Compose foundation 1.7+ ships
+     `LazyListState.requestScrollToItem(index)`, which schedules the scroll for the
+     next layout pass instead of acquiring the layout lock synchronously. Drop-in
+     replacement; smallest diff.
+  2. **Defer one frame** — `withFrameNanos { } ; listState.scrollToItem(entries.lastIndex)`.
+     Lets the current measure pass finish before scrolling. Slight visible delay
+     (one frame).
+  3. **Reactive scroll** — replace the imperative calls with
+     `snapshotFlow { entries.lastIndex }.distinctUntilChanged().collect { listState.scrollToItem(it) }`.
+     Compose handles the timing; clearer state intent.
+
+  (1) is the cheapest. (3) is the most idiomatic.
+
+  **Acceptance:** `LogViewerE2eTest` passes 10 consecutive runs without flakes;
+  real-app behaviour unchanged (rapid filter changes still tail-follow without lag).
+
   *Size:* M *Tags:* compose-mp, log-viewer, tests
 
 - **`LocalClipboardManager` deprecation** — `plugins/ui/log-viewer/.../PackageUidLookup.kt`
