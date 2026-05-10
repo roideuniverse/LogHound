@@ -2,7 +2,7 @@
 
 A fast, memory-efficient Android logcat viewer built with Compose Multiplatform for Desktop. Plugin-based: every visual feature is a plugin (including the core log viewer), and every data source is a plugin (logcat, file, future others).
 
-For the full design, read the specs first: [`specs/behavior.spec.md`](specs/behavior.spec.md), [`specs/coding.spec.md`](specs/coding.spec.md), [`specs/plugins.spec.md`](specs/plugins.spec.md) (DSL plugin authoring), and [`AGENTS.md`](AGENTS.md).
+For the full design, read the specs first: [`specs/behavior.spec.md`](specs/behavior.spec.md), [`specs/coding.spec.md`](specs/coding.spec.md), [`specs/plugins.spec.md`](specs/plugins.spec.md) (DSL plugin authoring), and [`AGENTS.md`](AGENTS.md). For the design framing of unreleased features (multi-device, sessions), see [`specs/design-brief.md`](specs/design-brief.md).
 
 ## Prerequisites
 

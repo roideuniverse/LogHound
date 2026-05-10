@@ -189,6 +189,17 @@ The bottom of the window shows:
 
 ---
 
+## Proposed UX (not yet shipped)
+
+Two features are spec'd at the design-brief stage. Each is captured in detail
+in [`design-brief.md`](design-brief.md) so a designer can mock them up; the
+implementation issues are linked from the brief.
+
+- **Multi-device support** — connect to multiple ADB devices simultaneously,
+  each scoped via a status-bar device pill that drives every plugin's view.
+- **Sessions** — end the current live session and archive it, browse archived
+  sessions on demand without mixing them into the live view.
+
 ## Future plugin ideas (not in v1)
 
 - Crash/ANR analyzer — group by exception type and stack trace similarity
