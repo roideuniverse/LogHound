@@ -7,6 +7,14 @@ CREATE TABLE uuids (
 
 CREATE INDEX uuids_count_desc ON uuids(count DESC);
 
+-- Every (uuid, log_id) match. Lets the detail view look up matching log ids
+-- via the indexed PK instead of substring-scanning the main logs DB.
+CREATE TABLE uuid_log (
+    uuid TEXT NOT NULL,
+    log_id INTEGER NOT NULL,
+    PRIMARY KEY (uuid, log_id)
+);
+
 CREATE TABLE meta (
     key TEXT PRIMARY KEY NOT NULL,
     value TEXT NOT NULL
@@ -36,6 +44,33 @@ LIMIT :lim OFFSET :off;
 
 countMatching:
 SELECT COUNT(*) FROM uuids WHERE uuid LIKE :search || '%';
+
+insertOccurrence:
+INSERT OR IGNORE INTO uuid_log(uuid, log_id) VALUES (:uuid, :logId);
+
+selectLogIdsForUuidDesc:
+SELECT log_id FROM uuid_log
+WHERE uuid = :uuid
+ORDER BY log_id DESC
+LIMIT :lim;
+
+selectLogIdsForUuidBefore:
+SELECT log_id FROM uuid_log
+WHERE uuid = :uuid AND log_id < :beforeId
+ORDER BY log_id DESC
+LIMIT :lim;
+
+countOccurrencesForUuid:
+SELECT COUNT(*) FROM uuid_log WHERE uuid = :uuid;
+
+countAllOccurrences:
+SELECT COUNT(*) FROM uuid_log;
+
+clearUuids:
+DELETE FROM uuids;
+
+clearOccurrences:
+DELETE FROM uuid_log;
 
 getMeta:
 SELECT value FROM meta WHERE key = :key;

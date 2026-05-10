@@ -15,6 +15,7 @@ kotlin {
             implementation(project(":core-api"))
             implementation(project(":database"))
             implementation(project(":core-impl"))
+            implementation(project(":plugin-dsl"))
             implementation(project(":plugins:ui:log-viewer"))
             implementation(project(":plugins:ui:uuid-grouping"))
             implementation(project(":plugins:data:logcat"))
@@ -32,6 +33,9 @@ kotlin {
         jvmMain.dependencies {
             implementation(compose.desktop.currentOs)
             implementation(libs.kotlinx.coroutinesSwing)
+            implementation(libs.kotlin.scriptingJvmHost)
+            implementation(libs.kotlin.scriptingJvm)
+            implementation(libs.kotlin.scriptingCommon)
         }
         jvmTest.dependencies {
             implementation(compose.desktop.uiTestJUnit4)

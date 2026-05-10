@@ -144,6 +144,40 @@ class LogRepositoryImplTest {
     }
 
     @Test
+    fun queryByIds_returns_entries_in_ascending_id_order() = runTest {
+        val (_, repo) = newRepo()
+        repo.append(List(10) { entry(message = "m-$it") })
+        val all = repo.query(limit = 100).entries
+        val ids = all.map { it.id }
+
+        // Pick three ids out of order; result should still be ASC.
+        val picked = listOf(ids[7], ids[2], ids[5])
+        val fetched = repo.queryByIds(picked)
+        assertEquals(3, fetched.size)
+        assertEquals(picked.sorted(), fetched.map { it.id })
+        assertEquals(setOf("m-2", "m-5", "m-7"), fetched.map { it.message }.toSet())
+    }
+
+    @Test
+    fun queryByIds_with_empty_input_returns_empty() = runTest {
+        val (_, repo) = newRepo()
+        repo.append(List(3) { entry(message = "m-$it") })
+        assertTrue(repo.queryByIds(emptyList()).isEmpty())
+    }
+
+    @Test
+    fun queryByIds_skips_missing_ids_silently() = runTest {
+        val (_, repo) = newRepo()
+        repo.append(List(3) { entry(message = "m-$it") })
+        val all = repo.query(limit = 100).entries
+        val realId = all.first().id
+
+        val fetched = repo.queryByIds(listOf(realId, 999_999L))
+        assertEquals(1, fetched.size)
+        assertEquals(realId, fetched.single().id)
+    }
+
+    @Test
     fun count_empty_filter_returns_total_rows() = runTest {
         val (_, repo) = newRepo()
         repo.append(List(42) { entry(message = "m-$it") })

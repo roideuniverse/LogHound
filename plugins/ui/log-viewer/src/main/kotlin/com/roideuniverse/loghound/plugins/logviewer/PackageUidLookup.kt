@@ -34,6 +34,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.roideuniverse.loghound.design.LogHoundDesign
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -73,7 +74,7 @@ internal fun PackageUidLookupBar(modifier: Modifier = Modifier) {
         }
     }
 
-    Surface(modifier = modifier.fillMaxWidth(), color = Color(0xFFFAFAFA)) {
+    Surface(modifier = modifier.fillMaxWidth(), color = LogHoundDesign.Colors.ToolbarBackground) {
         Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 LookupInput(
@@ -94,8 +95,7 @@ internal fun PackageUidLookupBar(modifier: Modifier = Modifier) {
             status?.let { msg ->
                 Text(
                     text = msg,
-                    color = Color(0xFF888888),
-                    style = TextStyle(fontSize = 12.sp),
+                    style = LogHoundDesign.Text.Status,
                     modifier = Modifier.padding(top = 2.dp),
                 )
             }
@@ -115,7 +115,7 @@ private fun LookupInput(
     modifier: Modifier = Modifier,
 ) {
     val shape = RoundedCornerShape(4.dp)
-    val style: TextStyle = LocalTextStyle.current.copy(color = Color.Black, fontSize = 13.sp)
+    val style: TextStyle = LocalTextStyle.current.merge(LogHoundDesign.Text.Field)
     BasicTextField(
         value = value,
         onValueChange = onChange,
@@ -123,8 +123,8 @@ private fun LookupInput(
         textStyle = style,
         modifier = modifier
             .clip(shape)
-            .background(Color.White)
-            .border(1.dp, Color(0xFFCCCCCC), shape)
+            .background(LogHoundDesign.Colors.TextFieldBackground)
+            .border(1.dp, LogHoundDesign.Colors.TextFieldBorder, shape)
             .padding(horizontal = 8.dp, vertical = 6.dp)
             .testTag(TestTags.PACKAGE_LOOKUP_INPUT),
         decorationBox = { inner ->
@@ -132,7 +132,7 @@ private fun LookupInput(
                 if (value.isEmpty()) {
                     Text(
                         "Find UID by package, e.g. com.app.debug",
-                        color = Color(0xFFAAAAAA),
+                        color = LogHoundDesign.Colors.Placeholder,
                         style = style,
                     )
                 }
@@ -154,11 +154,11 @@ private fun ResultRow(row: PackageInfo, copy: (AnnotatedString) -> Unit) {
         Text(
             text = row.packageName,
             modifier = Modifier.weight(1f),
-            style = TextStyle(fontFamily = FontFamily.Monospace, fontSize = 12.sp, color = Color(0xFF222222)),
+            style = LogHoundDesign.Text.Row,
         )
         Text(
             text = "uid ${row.uid}",
-            style = TextStyle(fontFamily = FontFamily.Monospace, fontSize = 12.sp, color = Color(0xFF555555)),
+            style = LogHoundDesign.Text.Row.copy(color = LogHoundDesign.Colors.Secondary),
         )
         Spacer(Modifier.width(8.dp))
         CopyAction(
@@ -175,7 +175,7 @@ private fun ResultRow(row: PackageInfo, copy: (AnnotatedString) -> Unit) {
             copy = copy,
         )
     }
-    HorizontalDivider(color = Color(0xFFEEEEEE))
+    HorizontalDivider(color = LogHoundDesign.Colors.RowDivider)
 }
 
 @Composable
@@ -187,7 +187,7 @@ private fun CopyAction(
 ) {
     Text(
         text = label,
-        style = TextStyle(fontSize = 12.sp, color = Color(0xFF1976D2)),
+        style = TextStyle(fontSize = 12.sp, color = LogHoundDesign.Colors.Primary),
         modifier = Modifier
             .clickable { copy(AnnotatedString(value)) }
             .testTag(tag)

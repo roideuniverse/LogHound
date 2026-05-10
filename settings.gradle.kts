@@ -33,8 +33,10 @@ plugins {
 }
 
 include(":core-api")
+include(":design")
 include(":database")
 include(":core-impl")
+include(":plugin-dsl")
 include(":app")
 include(":plugins:ui:log-viewer")
 include(":plugins:ui:uuid-grouping")

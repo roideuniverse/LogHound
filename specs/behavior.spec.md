@@ -124,6 +124,15 @@ LogHound is a plugin-based app. Every feature that displays logs — including t
 - A plugin receives new logs incrementally as they are ingested — it does not need to rescan all logs
 - A plugin provides its own UI within its tab
 
+**Plugin authoring paths:**
+
+LogHound supports two ways to author a plugin:
+
+1. **In-tree (compiled).** The author clones the repo, writes a Kotlin module under `plugins/ui/<name>` or `plugins/data/<name>`, and registers it in `app/main.kt`. Full Compose access; ships as part of the app build. Used by the built-in plugins (Log Viewer, UUID Grouping, Logcat data plugin) and by power users who want pixel-level control.
+2. **`.kts` drop-in (DSL).** The author writes a single Kotlin script using a small DSL (~13 verbs: `column`, `row`, `text`, `list`, `tabs`, `clickable`, `textField`, `button`, `centered`, `loading`, `divider`, `spacer`, `weight`) and drops it at `~/.loghound/plugins/<id>.kts`. The app loads scripts at launch via a JVM script host; no rebuild needed. Optimised for AI-agent-authored plugins and quick experiments. Visual styling defaults match the built-in plugins via a shared design-token object; per-plugin overrides via a `theme { … }` builder. See [`plugins.spec.md`](plugins.spec.md) for the full surface and [`examples/plugins/uuid-grouping.kts`](../examples/plugins/uuid-grouping.kts) for a worked example that mirrors the built-in UUID Grouping plugin.
+
+Both paths see the same `LogRepository`, the same `LogEntry`, and the same `ingested` stream. The DSL is intentionally a constrained surface; the in-tree path is the escape hatch when a plugin needs something the DSL doesn't expose.
+
 ---
 
 ## Built-in plugins

@@ -26,7 +26,7 @@ class LogcatDataPlugin : DataPlugin {
             awaitCancellation()
         }
         while (coroutineContext.isActive) {
-            val deviceId = findFirstDevice(adb!!)
+            val deviceId = findFirstDevice(adb)
             if (deviceId == null) {
                 delay(RETRY_DELAY_MS)
                 continue
