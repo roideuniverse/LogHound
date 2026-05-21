@@ -34,15 +34,11 @@ object LogHoundDesign {
         val Border = Color(0xFFE5E5E5)
         val Placeholder = Color(0xFF8C8C8C)
 
-        // Backwards-compatible aliases — historically the codebase distinguished
-        // a "heavy" divider from a row-level divider, and a tab-strip surface
-        // from a toolbar surface. Swiss collapses both pairs to one tone. The
-        // aliases stay so existing references in built-in plugins keep working;
-        // new code should reach for Border / Surface directly.
-        val Divider = Border
-        val RowDivider = Border
-        val TabStripBackground = Surface
-        val ToolbarBackground = Surface
+        // Semantic aliases — same value as Background/Border/Surface today, but
+        // named distinctly so a future theme can split them (e.g. a tinted
+        // focused-field background, an active pill that's brighter than the
+        // page) without a sweeping rename. Callers reach for the semantic
+        // name that matches their intent.
         val ActiveTabBackground = Color.White
         val TextFieldBackground = Background
         val TextFieldBorder = Border

@@ -202,7 +202,7 @@ class UuidGroupingPlugin(
                 onSelectUuid = { activeUuid = it },
                 onClose = ::closeDetail,
             )
-            HorizontalDivider(color = LogHoundDesign.Colors.Divider)
+            HorizontalDivider(color = LogHoundDesign.Colors.Border)
             if (activeUuid == null) {
                 Toolbar(
                     search = search,
@@ -213,7 +213,7 @@ class UuidGroupingPlugin(
                     visibleCount = rows.size,
                     totalCount = totalMatching,
                 )
-                HorizontalDivider(color = LogHoundDesign.Colors.Divider)
+                HorizontalDivider(color = LogHoundDesign.Colors.Border)
                 UuidList(rows = rows, onUuidClick = ::openDetail)
             } else {
                 val controller = controllers[activeUuid]
@@ -246,7 +246,7 @@ private fun UuidTabStrip(
     onSelectUuid: (String) -> Unit,
     onClose: (String) -> Unit,
 ) {
-    Surface(modifier = Modifier.fillMaxWidth(), color = LogHoundDesign.Colors.TabStripBackground) {
+    Surface(modifier = Modifier.fillMaxWidth(), color = LogHoundDesign.Colors.Surface) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 2.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -314,7 +314,7 @@ private fun Toolbar(
     visibleCount: Int,
     totalCount: Long,
 ) {
-    Surface(modifier = Modifier.fillMaxWidth(), color = LogHoundDesign.Colors.ToolbarBackground) {
+    Surface(modifier = Modifier.fillMaxWidth(), color = LogHoundDesign.Colors.Surface) {
         Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 6.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 SearchField(search, onSearchChange, modifier = Modifier.weight(1f))
@@ -472,7 +472,7 @@ private fun UuidList(rows: List<Uuids>, onUuidClick: (String) -> Unit) {
                             style = LogHoundDesign.Text.Row,
                         )
                     }
-                    HorizontalDivider(color = LogHoundDesign.Colors.RowDivider)
+                    HorizontalDivider(color = LogHoundDesign.Colors.Border)
                 }
             }
         }

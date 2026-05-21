@@ -74,7 +74,7 @@ internal fun PackageUidLookupBar(modifier: Modifier = Modifier) {
         }
     }
 
-    Surface(modifier = modifier.fillMaxWidth(), color = LogHoundDesign.Colors.ToolbarBackground) {
+    Surface(modifier = modifier.fillMaxWidth(), color = LogHoundDesign.Colors.Surface) {
         Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 LookupInput(
@@ -175,7 +175,7 @@ private fun ResultRow(row: PackageInfo, copy: (AnnotatedString) -> Unit) {
             copy = copy,
         )
     }
-    HorizontalDivider(color = LogHoundDesign.Colors.RowDivider)
+    HorizontalDivider(color = LogHoundDesign.Colors.Border)
 }
 
 @Composable

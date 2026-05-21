@@ -7,11 +7,11 @@ import com.roideuniverse.loghound.design.LogHoundDesign
 
 data class PluginTheme(
     val background: Color = LogHoundDesign.Colors.Background,
-    val divider: Color = LogHoundDesign.Colors.Divider,
-    val rowDivider: Color = LogHoundDesign.Colors.RowDivider,
-    val tabStripBackground: Color = LogHoundDesign.Colors.TabStripBackground,
+    val divider: Color = LogHoundDesign.Colors.Border,
+    val rowDivider: Color = LogHoundDesign.Colors.Border,
+    val tabStripBackground: Color = LogHoundDesign.Colors.Surface,
     val activeTabBackground: Color = LogHoundDesign.Colors.ActiveTabBackground,
-    val toolbarBackground: Color = LogHoundDesign.Colors.ToolbarBackground,
+    val toolbarBackground: Color = LogHoundDesign.Colors.Surface,
     val text: TextStyle = LogHoundDesign.Text.Status,
     val rowText: TextStyle = LogHoundDesign.Text.Row,
     val tabText: TextStyle = LogHoundDesign.Text.Tab,
