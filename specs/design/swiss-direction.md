@@ -9,8 +9,8 @@
 >
 > Implementation is incremental, one concern per PR:
 >
-> 1. Tokens in `design/LogHoundDesign.kt` (this PR — colors, dimens; fonts deferred)
-> 2. Bundle Instrument Sans + JetBrains Mono and switch font families
+> 1. ✅ Tokens in `design/LogHoundDesign.kt` ([#32](https://github.com/roideuniverse/LogHound/pull/32) — colors only; fonts deferred to step 2)
+> 2. ✅ Bundle Instrument Sans + JetBrains Mono and switch font families (this PR)
 > 3. Badge-pill priority renderer in log rows (visual replacement for colored text)
 > 4. Hover / click-to-expand row states
 > 5. Sub-tab strip layout updates to match Swiss heights / borders

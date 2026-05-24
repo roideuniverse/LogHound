@@ -3,6 +3,8 @@ package com.roideuniverse.loghound.design
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.platform.Font
 import androidx.compose.ui.unit.sp
 import com.roideuniverse.loghound.core.LogPriority
 
@@ -12,21 +14,37 @@ import com.roideuniverse.loghound.core.LogPriority
  * Values follow the Modern Swiss Utility direction
  * ([`specs/design/swiss-direction.md`](../../../../../specs/design/swiss-direction.md)) —
  * one shared surface tone (#F7F7F7), one shared border tone (#E5E5E5), softer
- * text (#1A1A1A on near-white), and a 4-accent palette (blue / orange / red /
+ * text (#1A1A1A on near-white), a 4-accent palette (blue / orange / red /
  * green) reused across priority colors, device identifiers, and informational
- * states.
+ * states, and bundled Instrument Sans + JetBrains Mono families.
  *
  * Built-in plugins reference these directly. The DSL plugin theme
  * (`PluginTheme`) seeds its defaults from these, so script-loaded plugins
  * inherit the same look unless they explicitly override via `theme { ... }`.
  *
  * Layout values (paddings, dp spacing) are not tokenised here — they live
- * alongside the composables that use them. Fonts are also not bundled yet
- * (Instrument Sans + JetBrains Mono are planned for a follow-up slice); for
- * now the text styles fall back to the system sans-serif and Compose's
- * built-in `FontFamily.Monospace`.
+ * alongside the composables that use them.
+ *
+ * Fonts live in `design/src/main/resources/fonts/` and are loaded from the
+ * classpath at first reference. Licenses (SIL OFL 1.1) ship alongside the
+ * `.ttf` files in that directory.
  */
 object LogHoundDesign {
+
+    object Fonts {
+        /** Instrument Sans — UI text (tabs, buttons, status, fields). Weights: 400, 500, 600. */
+        val Ui: FontFamily = FontFamily(
+            Font("fonts/InstrumentSans-Regular.ttf", FontWeight.Normal),
+            Font("fonts/InstrumentSans-Medium.ttf", FontWeight.Medium),
+            Font("fonts/InstrumentSans-SemiBold.ttf", FontWeight.SemiBold),
+        )
+
+        /** JetBrains Mono — log rows and tabular data. Weights: 400, 500. */
+        val Mono: FontFamily = FontFamily(
+            Font("fonts/JetBrainsMono-Regular.ttf", FontWeight.Normal),
+            Font("fonts/JetBrainsMono-Medium.ttf", FontWeight.Medium),
+        )
+    }
 
     object Colors {
         val Background = Color.White
@@ -66,28 +84,56 @@ object LogHoundDesign {
 
     object Text {
         /** 12sp muted — toolbar status, footnotes, anything secondary. */
-        val Status = TextStyle(fontSize = 12.sp, color = Colors.Secondary)
-
-        /** Monospace 12sp near-black — log lines, UUID rows, tabular data. */
-        val Row = TextStyle(
-            fontFamily = FontFamily.Monospace,
+        val Status = TextStyle(
+            fontFamily = Fonts.Ui,
+            fontWeight = FontWeight.Medium,
             fontSize = 12.sp,
+            color = Colors.Secondary,
+        )
+
+        /** JetBrains Mono 12sp near-black — log lines, UUID rows, tabular data.
+         * 20sp line-height matches the Swiss spec for prolonged log reading. */
+        val Row = TextStyle(
+            fontFamily = Fonts.Mono,
+            fontWeight = FontWeight.Normal,
+            fontSize = 12.sp,
+            lineHeight = 20.sp,
             color = Colors.OnSurface,
         )
 
         /** 13sp near-black — tab pill labels. */
-        val Tab = TextStyle(fontSize = 13.sp, color = Colors.OnSurface)
+        val Tab = TextStyle(
+            fontFamily = Fonts.Ui,
+            fontWeight = FontWeight.Medium,
+            fontSize = 13.sp,
+            color = Colors.OnSurface,
+        )
 
         /** 11sp muted — the "✕" close glyph on closeable tab pills. */
-        val TabClose = TextStyle(fontSize = 11.sp, color = Colors.Secondary)
+        val TabClose = TextStyle(
+            fontFamily = Fonts.Ui,
+            fontWeight = FontWeight.Medium,
+            fontSize = 11.sp,
+            color = Colors.Secondary,
+        )
 
         /** 13sp near-black — text buttons. Swiss primaries are black-bg pills
          * rendered as a dedicated component; this style applies to text-only
          * actions (toggles, links). */
-        val Button = TextStyle(fontSize = 13.sp, color = Colors.OnSurface)
+        val Button = TextStyle(
+            fontFamily = Fonts.Ui,
+            fontWeight = FontWeight.Medium,
+            fontSize = 13.sp,
+            color = Colors.OnSurface,
+        )
 
         /** 13sp near-black — search/filter input content. */
-        val Field = TextStyle(fontSize = 13.sp, color = Colors.OnSurface)
+        val Field = TextStyle(
+            fontFamily = Fonts.Ui,
+            fontWeight = FontWeight.Normal,
+            fontSize = 13.sp,
+            color = Colors.OnSurface,
+        )
     }
 
     /** Logcat-style color for a given priority level. */

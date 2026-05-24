@@ -44,7 +44,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -486,9 +485,7 @@ private fun UuidList(rows: List<Uuids>, onUuidClick: (String) -> Unit) {
 @Composable
 private fun DetailLogRow(entry: LogEntry) {
     val weight = if (entry.priority == LogPriority.Fatal) FontWeight.Bold else FontWeight.Normal
-    val style = TextStyle(
-        fontFamily = FontFamily.Monospace,
-        fontSize = 12.sp,
+    val style = LogHoundDesign.Text.Row.copy(
         color = LogHoundDesign.colorFor(entry.priority),
         fontWeight = weight,
     )
