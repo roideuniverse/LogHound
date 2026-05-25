@@ -81,6 +81,10 @@ object LogHoundDesign {
          * target is visible without distracting from log content. */
         val HoverBackground = Color(0xFFFAFAFA)
 
+        /** Selected/pressed-state background for clickable surfaces (sidebar
+         * active item, etc.). One step darker than HoverBackground. */
+        val PressedBackground = Color(0xFFEBEBEB)
+
         /** Muted gray — timestamps, inactive tabs, secondary labels, close glyphs. */
         val Secondary = Color(0xFF8C8C8C)
 

@@ -31,6 +31,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.roideuniverse.loghound.core.UIPlugin
+import com.roideuniverse.loghound.design.LogHoundDesign
 
 private const val CORE_LOG_VIEWER_ID = "core.log-viewer"
 private val TAB_BAR_HEIGHT = 36.dp
@@ -77,7 +78,7 @@ fun App(
                     activeTabId = activeTabId,
                     onClick = { openOrFocus(it) },
                 )
-                VerticalDivider(color = Color(0xFFCCCCCC))
+                VerticalDivider(color = LogHoundDesign.Colors.Border)
             }
             Column(modifier = Modifier.weight(1f).fillMaxHeight()) {
                 TabBar(
@@ -86,7 +87,7 @@ fun App(
                     onSelect = { activeTabId = it.id },
                     onClose = { closeTab(it) },
                 )
-                HorizontalDivider(color = Color(0xFFCCCCCC))
+                HorizontalDivider(color = LogHoundDesign.Colors.Border)
                 Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
                     val active = openTabs.firstOrNull { it.id == activeTabId }
                     if (active != null) {
@@ -98,7 +99,7 @@ fun App(
                         ) {
                             Text(
                                 "No tab open. Pick a plugin from the sidebar.",
-                                color = Color(0xFF666666),
+                                style = LogHoundDesign.Text.Status,
                             )
                         }
                     }
@@ -116,7 +117,7 @@ private fun Sidebar(
 ) {
     Surface(
         modifier = Modifier.width(220.dp).fillMaxHeight(),
-        color = Color(0xFFF2F2F2),
+        color = LogHoundDesign.Colors.Surface,
     ) {
         LazyColumn(modifier = Modifier.fillMaxSize().padding(vertical = 4.dp)) {
             items(plugins, key = { it.id }) { plugin ->
@@ -124,13 +125,15 @@ private fun Sidebar(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .height(28.dp)
                         .clickable { onClick(plugin) }
                         .background(
-                            if (selected) Color(0xFFD9E2F3) else Color.Transparent,
+                            if (selected) LogHoundDesign.Colors.PressedBackground else Color.Transparent,
                         )
-                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                        .padding(horizontal = 8.dp),
+                    contentAlignment = Alignment.CenterStart,
                 ) {
-                    Text(plugin.name)
+                    Text(plugin.name, style = LogHoundDesign.Text.Tab)
                 }
             }
         }
@@ -146,7 +149,7 @@ private fun TabBar(
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth().height(TAB_BAR_HEIGHT),
-        color = Color(0xFFEDEDED),
+        color = LogHoundDesign.Colors.Surface,
     ) {
         Row(
             modifier = Modifier.fillMaxSize(),
@@ -160,14 +163,16 @@ private fun TabBar(
                         .fillMaxHeight()
                         .clickable { onSelect(tab) }
                         .background(
-                            if (active) Color.White else Color(0xFFEDEDED),
+                            if (active) LogHoundDesign.Colors.ActiveTabBackground else Color.Transparent,
                         )
                         .padding(start = 12.dp, end = 6.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
                         tab.name,
-                        fontWeight = if (active) FontWeight.Bold else FontWeight.Normal,
+                        style = LogHoundDesign.Text.Tab.copy(
+                            fontWeight = if (active) FontWeight.SemiBold else FontWeight.Medium,
+                        ),
                     )
                     Box(
                         modifier = Modifier
@@ -175,10 +180,10 @@ private fun TabBar(
                             .clickable { onClose(tab) }
                             .padding(horizontal = 4.dp),
                     ) {
-                        Text("✕", color = Color(0xFF666666))
+                        Text("✕", style = LogHoundDesign.Text.TabClose)
                     }
                 }
-                VerticalDivider(color = Color(0xFFE0E0E0))
+                VerticalDivider(color = LogHoundDesign.Colors.Border)
             }
         }
     }

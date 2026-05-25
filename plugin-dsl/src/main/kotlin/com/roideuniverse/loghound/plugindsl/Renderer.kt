@@ -198,9 +198,12 @@ private fun RenderTabs(verb: TabsVerb, theme: PluginTheme) {
     val openTabs by controller.openTabs
 
     Column(modifier = Modifier.fillMaxSize()) {
-        Surface(modifier = Modifier.fillMaxWidth(), color = theme.tabStripBackground) {
+        Surface(
+            modifier = Modifier.fillMaxWidth().height(36.dp),
+            color = theme.tabStripBackground,
+        ) {
             Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 2.dp),
+                modifier = Modifier.fillMaxSize().padding(horizontal = 4.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 TabPill(
