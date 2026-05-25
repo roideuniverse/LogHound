@@ -44,7 +44,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -202,7 +201,7 @@ class UuidGroupingPlugin(
                 onSelectUuid = { activeUuid = it },
                 onClose = ::closeDetail,
             )
-            HorizontalDivider(color = LogHoundDesign.Colors.Divider)
+            HorizontalDivider(color = LogHoundDesign.Colors.Border)
             if (activeUuid == null) {
                 Toolbar(
                     search = search,
@@ -213,7 +212,7 @@ class UuidGroupingPlugin(
                     visibleCount = rows.size,
                     totalCount = totalMatching,
                 )
-                HorizontalDivider(color = LogHoundDesign.Colors.Divider)
+                HorizontalDivider(color = LogHoundDesign.Colors.Border)
                 UuidList(rows = rows, onUuidClick = ::openDetail)
             } else {
                 val controller = controllers[activeUuid]
@@ -246,7 +245,7 @@ private fun UuidTabStrip(
     onSelectUuid: (String) -> Unit,
     onClose: (String) -> Unit,
 ) {
-    Surface(modifier = Modifier.fillMaxWidth(), color = LogHoundDesign.Colors.TabStripBackground) {
+    Surface(modifier = Modifier.fillMaxWidth(), color = LogHoundDesign.Colors.Surface) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 2.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -314,7 +313,7 @@ private fun Toolbar(
     visibleCount: Int,
     totalCount: Long,
 ) {
-    Surface(modifier = Modifier.fillMaxWidth(), color = LogHoundDesign.Colors.ToolbarBackground) {
+    Surface(modifier = Modifier.fillMaxWidth(), color = LogHoundDesign.Colors.Surface) {
         Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 6.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 SearchField(search, onSearchChange, modifier = Modifier.weight(1f))
@@ -472,7 +471,7 @@ private fun UuidList(rows: List<Uuids>, onUuidClick: (String) -> Unit) {
                             style = LogHoundDesign.Text.Row,
                         )
                     }
-                    HorizontalDivider(color = LogHoundDesign.Colors.RowDivider)
+                    HorizontalDivider(color = LogHoundDesign.Colors.Border)
                 }
             }
         }
@@ -486,9 +485,7 @@ private fun UuidList(rows: List<Uuids>, onUuidClick: (String) -> Unit) {
 @Composable
 private fun DetailLogRow(entry: LogEntry) {
     val weight = if (entry.priority == LogPriority.Fatal) FontWeight.Bold else FontWeight.Normal
-    val style = TextStyle(
-        fontFamily = FontFamily.Monospace,
-        fontSize = 12.sp,
+    val style = LogHoundDesign.Text.Row.copy(
         color = LogHoundDesign.colorFor(entry.priority),
         fontWeight = weight,
     )

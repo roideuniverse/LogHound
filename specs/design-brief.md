@@ -1,5 +1,14 @@
 # LogHound — Design Brief
 
+> **Update (2026-05-19): chosen direction is [Modern Swiss Utility](design/swiss-direction.md).**
+> Stitch generated three directions from this brief (Linear Minimalist, IDE
+> Classic, Modern Swiss Utility); we picked Swiss. The chosen direction's PRD
+> with the full token list and per-screen spec is at
+> [`design/swiss-direction.md`](design/swiss-direction.md). This brief stays
+> as the original framing for context.
+
+---
+
 A document for a UI/UX designer joining the project. Two upcoming features need
 visual and interaction design: **multi-device support** and **session
 management**. This brief captures what the app is today, the constraints any

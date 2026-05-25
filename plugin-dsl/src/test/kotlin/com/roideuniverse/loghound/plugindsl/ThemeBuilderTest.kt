@@ -10,13 +10,15 @@ import kotlin.test.assertNotEquals
 class ThemeBuilderTest {
 
     @Test
-    fun `default theme matches built-in look`() {
+    fun `default theme matches Swiss direction tokens`() {
         val t = PluginTheme()
-        // Spot-check the values that scripts depend on for parity with the built-in.
+        // Spot-check the values that scripts depend on for parity with the
+        // built-in plugins. Swiss collapses dividers to a single #E5E5E5
+        // border tone and surfaces to a single #F7F7F7.
         assertEquals(Color.White, t.background)
-        assertEquals(Color(0xFFCCCCCC), t.divider)
-        assertEquals(Color(0xFFEEEEEE), t.rowDivider)
-        assertEquals(Color(0xFFF0F0F0), t.tabStripBackground)
+        assertEquals(Color(0xFFE5E5E5), t.divider)
+        assertEquals(Color(0xFFE5E5E5), t.rowDivider)
+        assertEquals(Color(0xFFF7F7F7), t.tabStripBackground)
         assertEquals(Color(0xFFF7F7F7), t.toolbarBackground)
         assertEquals(Color.White, t.activeTabBackground)
         assertEquals(Color.White, t.textFieldBackground)
@@ -46,9 +48,9 @@ class ThemeBuilderTest {
             background = Color.Black
         }
         assertEquals(Color.Black, builder.theme.background)
-        // Other fields untouched.
-        assertEquals(Color(0xFFCCCCCC), builder.theme.divider)
-        assertEquals(Color(0xFFF0F0F0), builder.theme.tabStripBackground)
+        // Other fields untouched — Swiss defaults still apply.
+        assertEquals(Color(0xFFE5E5E5), builder.theme.divider)
+        assertEquals(Color(0xFFF7F7F7), builder.theme.tabStripBackground)
     }
 
     @Test

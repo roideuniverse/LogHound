@@ -45,7 +45,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -148,9 +147,9 @@ class LogViewerPlugin(
 
         Column(modifier = modifier.fillMaxSize()) {
             PackageUidLookupBar()
-            HorizontalDivider(color = LogHoundDesign.Colors.Divider)
+            HorizontalDivider(color = LogHoundDesign.Colors.Border)
             FilterBar(query = queryText, onQueryChange = { queryText = it })
-            HorizontalDivider(color = LogHoundDesign.Colors.Divider)
+            HorizontalDivider(color = LogHoundDesign.Colors.Border)
             Box(modifier = Modifier.fillMaxSize()) {
                 SelectionContainer(modifier = Modifier.fillMaxSize()) {
                     LazyColumn(
@@ -233,7 +232,7 @@ private fun LogRow(entry: LogEntry) {
 
 @Composable
 private fun FilterBar(query: String, onQueryChange: (String) -> Unit) {
-    Surface(modifier = Modifier.fillMaxWidth(), color = LogHoundDesign.Colors.ToolbarBackground) {
+    Surface(modifier = Modifier.fillMaxWidth(), color = LogHoundDesign.Colors.Surface) {
         Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp)) {
             val shape = RoundedCornerShape(4.dp)
             val style: TextStyle = LocalTextStyle.current.merge(LogHoundDesign.Text.Field)
