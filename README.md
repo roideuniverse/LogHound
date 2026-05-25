@@ -185,6 +185,27 @@ You can also open LogHound at any point during the capture; the Log Viewer's ini
 
 If `:app:run` left a window open after a crash, close the LogHound window (the JVM will exit). For the bundled app: quit it from the Dock.
 
+## Configuration
+
+LogHound reads `~/.loghound/config.properties` once on launch. Today the file
+only controls fonts, but the same file is where future user-tunable settings
+will land. The file is optional — without it, the bundled defaults are used.
+
+```properties
+# ~/.loghound/config.properties
+# Override the UI typeface (tabs, buttons, status text). Any TTF or OTF.
+font.ui.path=~/Library/Fonts/InterDisplay-Medium.ttf
+
+# Override the monospace typeface used by log rows and tabular data.
+font.mono.path=/Library/Fonts/SF-Mono-Regular.otf
+```
+
+Notes:
+- Paths starting with `~/` are expanded to your home directory.
+- A single override file is used for every weight of that family; Compose's font resolver picks the closest available weight.
+- If the path is missing or unreadable, LogHound prints a warning to stderr and falls back to the bundled font — it never crashes on bad config.
+- Changes take effect on the next launch.
+
 ## Where things live
 
 ```
