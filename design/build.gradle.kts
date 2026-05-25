@@ -8,6 +8,7 @@ dependencies {
     api(project(":core-api"))
     api(compose.runtime)
     api(compose.ui)
+    api(compose.foundation)
     testImplementation(libs.kotlin.test)
     testImplementation(libs.junit)
 }

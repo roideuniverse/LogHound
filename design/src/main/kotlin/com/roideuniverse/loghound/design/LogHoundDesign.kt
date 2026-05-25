@@ -96,6 +96,20 @@ object LogHoundDesign {
         val PriorityError = Color(0xFFE52E2E)
         val PriorityFatal = PriorityError
         val PrioritySilent = Secondary
+
+        // Pale "tinted-background" companions to the priority foreground
+        // colors. Used by the PriorityBadge pill — colored glyph on tinted
+        // square so the priority signal is visible without tinting the
+        // entire row's text (the Swiss spec calls for a 16x16, 6px-radius
+        // pill at #FBEAEE bg / #E52E2E fg for Error; the other tones follow
+        // the same ~92%-lightness derivation).
+        val PriorityBgVerbose = Color(0xFFE6F5EC)
+        val PriorityBgDebug = Color(0xFFEEEEEE)
+        val PriorityBgInfo = Color(0xFFE5EFFF)
+        val PriorityBgWarn = Color(0xFFFFF1E5)
+        val PriorityBgError = Color(0xFFFBEAEE)
+        val PriorityBgFatal = PriorityBgError
+        val PriorityBgSilent = PriorityBgDebug
     }
 
     object Text {
@@ -161,5 +175,16 @@ object LogHoundDesign {
         LogPriority.Error -> Colors.PriorityError
         LogPriority.Fatal -> Colors.PriorityFatal
         LogPriority.Silent -> Colors.PrioritySilent
+    }
+
+    /** Pale tinted background for the priority badge pill. */
+    fun badgeBgFor(priority: LogPriority): Color = when (priority) {
+        LogPriority.Verbose -> Colors.PriorityBgVerbose
+        LogPriority.Debug -> Colors.PriorityBgDebug
+        LogPriority.Info -> Colors.PriorityBgInfo
+        LogPriority.Warn -> Colors.PriorityBgWarn
+        LogPriority.Error -> Colors.PriorityBgError
+        LogPriority.Fatal -> Colors.PriorityBgFatal
+        LogPriority.Silent -> Colors.PriorityBgSilent
     }
 }

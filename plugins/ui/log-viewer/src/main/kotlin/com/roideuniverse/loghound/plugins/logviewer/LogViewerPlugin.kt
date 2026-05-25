@@ -46,14 +46,15 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.roideuniverse.loghound.core.LogEntry
 import com.roideuniverse.loghound.core.LogFilter
-import com.roideuniverse.loghound.core.LogPriority
 import com.roideuniverse.loghound.core.LogRepository
 import com.roideuniverse.loghound.core.UIPlugin
 import com.roideuniverse.loghound.design.LogHoundDesign
+import com.roideuniverse.loghound.design.PriorityBadge
 
 class LogViewerPlugin(
     private val repository: LogRepository,
@@ -214,20 +215,35 @@ private fun LoadingOlderRow() {
 
 @Composable
 private fun LogRow(entry: LogEntry) {
-    val weight = if (entry.priority == LogPriority.Fatal) FontWeight.Bold else FontWeight.Normal
-    val style = LogHoundDesign.Text.Row.copy(
-        color = LogHoundDesign.colorFor(entry.priority),
-        fontWeight = weight,
+    val bodyStyle = LogHoundDesign.Text.Row
+    val metaStyle = LogHoundDesign.Text.Row.copy(
+        fontSize = 11.sp,
+        color = LogHoundDesign.Colors.Secondary,
     )
-    val line = "${entry.timestamp}  ${entry.pid} ${entry.tid} ${entry.priority.label}  ${entry.tag}: ${entry.message}"
-    Text(
-        line,
-        style = style,
+    val tagStyle = LogHoundDesign.Text.Row.copy(fontWeight = FontWeight.Medium)
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 8.dp, vertical = 1.dp)
+            .padding(horizontal = 8.dp, vertical = 2.dp)
             .testTag(TestTags.LOG_ROW),
-    )
+        verticalAlignment = Alignment.Top,
+    ) {
+        PriorityBadge(entry.priority, modifier = Modifier.padding(top = 1.dp))
+        Spacer(Modifier.width(8.dp))
+        Text(entry.timestamp, style = bodyStyle)
+        Spacer(Modifier.width(8.dp))
+        Text("${entry.pid} ${entry.tid}", style = metaStyle, modifier = Modifier.padding(top = 1.dp))
+        Spacer(Modifier.width(12.dp))
+        Text(
+            entry.tag,
+            style = tagStyle,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.width(120.dp),
+        )
+        Spacer(Modifier.width(8.dp))
+        Text(entry.message, style = bodyStyle, modifier = Modifier.weight(1f))
+    }
 }
 
 @Composable
