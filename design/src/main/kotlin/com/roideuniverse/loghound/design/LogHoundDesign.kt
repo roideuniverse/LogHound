@@ -28,22 +28,38 @@ import com.roideuniverse.loghound.core.LogPriority
  * Fonts live in `design/src/main/resources/fonts/` and are loaded from the
  * classpath at first reference. Licenses (SIL OFL 1.1) ship alongside the
  * `.ttf` files in that directory.
+ *
+ * Users can override either family by pointing `font.ui.path` and/or
+ * `font.mono.path` at a TTF/OTF in `~/.loghound/config.properties`. When an
+ * override is present, that single file is used for every weight of that
+ * family (Compose's font resolver snaps requested weights to the closest
+ * available); when absent, the bundled multi-weight family is used.
  */
 object LogHoundDesign {
 
     object Fonts {
-        /** Instrument Sans — UI text (tabs, buttons, status, fields). Weights: 400, 500, 600. */
-        val Ui: FontFamily = FontFamily(
-            Font("fonts/InstrumentSans-Regular.ttf", FontWeight.Normal),
-            Font("fonts/InstrumentSans-Medium.ttf", FontWeight.Medium),
-            Font("fonts/InstrumentSans-SemiBold.ttf", FontWeight.SemiBold),
-        )
+        /** Instrument Sans (or user override) — UI text. */
+        val Ui: FontFamily = buildUiFamily()
 
-        /** JetBrains Mono — log rows and tabular data. Weights: 400, 500. */
-        val Mono: FontFamily = FontFamily(
-            Font("fonts/JetBrainsMono-Regular.ttf", FontWeight.Normal),
-            Font("fonts/JetBrainsMono-Medium.ttf", FontWeight.Medium),
-        )
+        /** JetBrains Mono (or user override) — log rows and tabular data. */
+        val Mono: FontFamily = buildMonoFamily()
+
+        private fun buildUiFamily(): FontFamily {
+            UserFontConfig.uiOverride?.let { return FontFamily(Font(it, FontWeight.Normal)) }
+            return FontFamily(
+                Font("fonts/InstrumentSans-Regular.ttf", FontWeight.Normal),
+                Font("fonts/InstrumentSans-Medium.ttf", FontWeight.Medium),
+                Font("fonts/InstrumentSans-SemiBold.ttf", FontWeight.SemiBold),
+            )
+        }
+
+        private fun buildMonoFamily(): FontFamily {
+            UserFontConfig.monoOverride?.let { return FontFamily(Font(it, FontWeight.Normal)) }
+            return FontFamily(
+                Font("fonts/JetBrainsMono-Regular.ttf", FontWeight.Normal),
+                Font("fonts/JetBrainsMono-Medium.ttf", FontWeight.Medium),
+            )
+        }
     }
 
     object Colors {
