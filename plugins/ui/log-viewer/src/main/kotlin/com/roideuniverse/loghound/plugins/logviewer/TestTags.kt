@@ -7,6 +7,8 @@ package com.roideuniverse.loghound.plugins.logviewer
 object TestTags {
     const val LOG_LIST = "logViewer.logList"
     const val LOG_ROW = "logViewer.logRow"
+    const val LOG_ROW_DETAIL_META = "logViewer.logRowDetailMeta"
+    const val LOG_ROW_DETAIL_MESSAGE = "logViewer.logRowDetailMessage"
     const val FILTER_INPUT = "logViewer.filterInput"
     const val JUMP_TO_BOTTOM = "logViewer.jumpToBottom"
 

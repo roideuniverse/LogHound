@@ -77,6 +77,10 @@ object LogHoundDesign {
         val TextFieldBackground = Background
         val TextFieldBorder = Border
 
+        /** Row-hover background — a hair darker than Background so the mouse
+         * target is visible without distracting from log content. */
+        val HoverBackground = Color(0xFFFAFAFA)
+
         /** Muted gray — timestamps, inactive tabs, secondary labels, close glyphs. */
         val Secondary = Color(0xFF8C8C8C)
 

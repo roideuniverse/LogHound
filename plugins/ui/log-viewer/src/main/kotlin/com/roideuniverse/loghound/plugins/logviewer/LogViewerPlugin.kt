@@ -3,11 +3,16 @@ package com.roideuniverse.loghound.plugins.logviewer
 import androidx.compose.foundation.VerticalScrollbar
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.hoverable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -70,6 +75,11 @@ class LogViewerPlugin(
         val listState = rememberLazyListState()
         var loadingOlder by remember { mutableStateOf(false) }
         var olderExhausted by remember { mutableStateOf(false) }
+        // Tracks which row (if any) is currently expanded to show its full detail.
+        // Survives recomposition; lost on filter change (we want a fresh start on
+        // a new scope) which happens naturally since this remember is unkeyed and
+        // we never reset it explicitly elsewhere.
+        var expandedEntryId by remember { mutableStateOf<Long?>(null) }
 
         LaunchedEffect(filter) {
             // Reset load-older state on filter change so the trigger can fire afresh
@@ -160,7 +170,15 @@ class LogViewerPlugin(
                         if (loadingOlder) {
                             item(key = "loadingOlder") { LoadingOlderRow() }
                         }
-                        items(items = entries, key = { it.id }) { entry -> LogRow(entry) }
+                        items(items = entries, key = { it.id }) { entry ->
+                            LogRowWithExpansion(
+                                entry = entry,
+                                expanded = entry.id == expandedEntryId,
+                                onToggle = {
+                                    expandedEntryId = if (expandedEntryId == entry.id) null else entry.id
+                                },
+                            )
+                        }
                     }
                 }
                 VerticalScrollbar(
@@ -210,6 +228,51 @@ private fun LoadingOlderRow() {
         CircularProgressIndicator(strokeWidth = 2.dp, modifier = Modifier.width(14.dp))
         Spacer(Modifier.width(8.dp))
         Text("Loading older…", style = LogHoundDesign.Text.Status)
+    }
+}
+
+@Composable
+private fun LogRowWithExpansion(entry: LogEntry, expanded: Boolean, onToggle: () -> Unit) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isHovered by interactionSource.collectIsHoveredAsState()
+    val rowBg = when {
+        expanded || isHovered -> LogHoundDesign.Colors.HoverBackground
+        else -> LogHoundDesign.Colors.Background
+    }
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(rowBg)
+            .hoverable(interactionSource)
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                onClick = onToggle,
+            ),
+    ) {
+        LogRow(entry)
+        if (expanded) {
+            ExpandedDetail(entry)
+        }
+    }
+}
+
+@Composable
+private fun ExpandedDetail(entry: LogEntry) {
+    Surface(modifier = Modifier.fillMaxWidth(), color = LogHoundDesign.Colors.Surface) {
+        Column(modifier = Modifier.padding(start = 32.dp, end = 12.dp, top = 4.dp, bottom = 8.dp)) {
+            Text(
+                "${entry.timestamp} · ${entry.tag} · pid ${entry.pid} · tid ${entry.tid}",
+                style = LogHoundDesign.Text.Status,
+                modifier = Modifier.testTag(TestTags.LOG_ROW_DETAIL_META),
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                entry.message,
+                style = LogHoundDesign.Text.Row,
+                modifier = Modifier.testTag(TestTags.LOG_ROW_DETAIL_MESSAGE),
+            )
+        }
     }
 }
 
