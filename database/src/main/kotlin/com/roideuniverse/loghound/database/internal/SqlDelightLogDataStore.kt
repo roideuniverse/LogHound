@@ -1,5 +1,6 @@
 package com.roideuniverse.loghound.database.internal
 
+import com.roideuniverse.loghound.core.DeviceId
 import com.roideuniverse.loghound.core.LogEntry
 import com.roideuniverse.loghound.core.LogPriority
 import com.roideuniverse.loghound.database.LogDataStore
@@ -32,6 +33,7 @@ internal class SqlDelightLogDataStore(private val db: LogHoundDb) : LogDataStore
                     tag = entry.tag,
                     message = entry.message,
                     package_name = entry.packageName,
+                    device_id = entry.deviceId.value,
                 )
             }
             lastId = queries.lastInsertRowid().executeAsOne()
@@ -82,4 +84,5 @@ private fun LogsRow.toLogEntry() = LogEntry(
     tag = tag,
     message = message,
     packageName = package_name,
+    deviceId = DeviceId(device_id),
 )
