@@ -1,19 +1,44 @@
 package com.roideuniverse.loghound.plugins.logcat
 
 import com.roideuniverse.loghound.core.DataPlugin
+import com.roideuniverse.loghound.core.Device
+import com.roideuniverse.loghound.core.DeviceId
 import com.roideuniverse.loghound.core.LogEntry
 import com.roideuniverse.loghound.core.LogRepository
 import com.roideuniverse.loghound.plugins.logcat.internal.PackageResolver
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.supervisorScope
 import kotlinx.coroutines.withContext
 import java.io.File
 import kotlin.coroutines.coroutineContext
 
+/**
+ * Streams `adb logcat -v threadtime` from every connected device in parallel.
+ *
+ * The plugin owns a small supervisor coroutine that polls `adb devices`
+ * every [POLL_INTERVAL_MS], diffs the result against its in-memory map of
+ * `serial -> stream Job`, and reconciles:
+ *
+ * - serials that newly appeared get a fresh `streamFromDevice` coroutine
+ * - serials that disappeared have their stream cancelled (which destroys
+ *   the subprocess, unblocking the readLine() loop)
+ * - serials that are still present are left alone
+ *
+ * The detected set is also published to [LogRepository.devices] so the UI
+ * status-bar pill / autocomplete / per-device tabs can render without
+ * having to shell out themselves.
+ *
+ * Each per-device stream tags its emitted `LogEntry`s with `DeviceId(serial)`
+ * so downstream consumers (filter, UUID Grouping, sessions) can scope by
+ * source.
+ */
 class LogcatDataPlugin : DataPlugin {
     override val id: String = "core.data.logcat"
     override val name: String = "ADB Logcat"
@@ -21,34 +46,57 @@ class LogcatDataPlugin : DataPlugin {
     override suspend fun run(repository: LogRepository) {
         val adb = findAdbExecutable()
         if (adb == null) {
-            // adb not found anywhere — idle until cancellation. UI surfacing of this
-            // condition is a later round.
+            // adb not found anywhere — publish an empty set so the UI can
+            // render a "no devices" empty state, then idle until cancel.
+            repository.publishDevices(emptySet())
             awaitCancellation()
         }
-        while (coroutineContext.isActive) {
-            val deviceId = findFirstDevice(adb)
-            if (deviceId == null) {
-                delay(RETRY_DELAY_MS)
-                continue
+        supervisorScope {
+            val active = mutableMapOf<String, Job>()
+            try {
+                while (coroutineContext.isActive) {
+                    val detected = listAttachedDevices(adb)
+                    repository.publishDevices(detected.map { Device(DeviceId(it)) }.toSet())
+
+                    val gone = active.keys - detected
+                    for (serial in gone) {
+                        active.remove(serial)?.cancel()
+                    }
+
+                    val fresh = detected - active.keys
+                    for (serial in fresh) {
+                        active[serial] = launch {
+                            runCatching { streamFromDevice(adb, serial, repository) }
+                            // On stream termination, drop the entry so the
+                            // next reconciliation can relaunch if the device
+                            // is still attached (logcat exit + reattach).
+                            active.remove(serial)
+                        }
+                    }
+
+                    delay(POLL_INTERVAL_MS)
+                }
+            } finally {
+                active.values.forEach { it.cancel() }
+                repository.publishDevices(emptySet())
             }
-            runCatching { streamFromDevice(adb, deviceId, repository) }
-            delay(RETRY_DELAY_MS)
         }
     }
 
     private suspend fun streamFromDevice(
         adb: String,
-        deviceId: String,
+        serial: String,
         repository: LogRepository,
     ) = coroutineScope {
+        val deviceId = DeviceId(serial)
         val proc = withContext(Dispatchers.IO) {
-            ProcessBuilder(adb, "-s", deviceId, "logcat", "-v", "threadtime")
+            ProcessBuilder(adb, "-s", serial, "logcat", "-v", "threadtime")
                 .redirectErrorStream(true)
                 .start()
         }
 
-        // Destroy the subprocess when this coroutine is cancelled. That closes the
-        // process's stdout, which unblocks the readLine() call in the loop below.
+        // Destroy the subprocess when this coroutine is cancelled. That closes
+        // stdout, which unblocks the readLine() call in the loop below.
         val destroyOnCancel = launch {
             try {
                 awaitCancellation()
@@ -57,11 +105,7 @@ class LogcatDataPlugin : DataPlugin {
             }
         }
 
-        // Background PID → package resolver: snapshots `adb shell ps -A` every 30s. The
-        // streaming hot path queries it synchronously without IO; PIDs not yet seen
-        // by a refresh are ingested with packageName = null and get attributed on the
-        // next refresh.
-        val resolver = PackageResolver(adb, deviceId)
+        val resolver = PackageResolver(adb, serial)
         val resolverJob = launch { resolver.runRefreshLoop() }
 
         try {
@@ -71,7 +115,12 @@ class LogcatDataPlugin : DataPlugin {
                 while (true) {
                     val line = reader.readLine() ?: break
                     LogcatThreadtimeParser.parse(line)?.let { entry ->
-                        batch.add(entry.copy(packageName = resolver.packageNameFor(entry.pid)))
+                        batch.add(
+                            entry.copy(
+                                deviceId = deviceId,
+                                packageName = resolver.packageNameFor(entry.pid),
+                            ),
+                        )
                     }
                     if (batch.size >= BATCH_SIZE) {
                         repository.append(batch.toList())
@@ -87,18 +136,19 @@ class LogcatDataPlugin : DataPlugin {
         }
     }
 
-    private suspend fun findFirstDevice(adb: String): String? = withContext(Dispatchers.IO) {
+    private suspend fun listAttachedDevices(adb: String): Set<String> = withContext(Dispatchers.IO) {
         val proc = ProcessBuilder(adb, "devices")
             .redirectErrorStream(true)
             .start()
         val output = proc.inputStream.bufferedReader().readText()
         proc.waitFor()
         output.lineSequence()
-            .drop(1)                                // skip "List of devices attached"
+            .drop(1) // skip "List of devices attached"
             .map { it.trim() }
-            .firstOrNull { it.endsWith("\tdevice") }
-            ?.substringBefore('\t')
-            ?.takeIf { it.isNotBlank() }
+            .filter { it.endsWith("\tdevice") }
+            .map { it.substringBefore('\t') }
+            .filter { it.isNotBlank() }
+            .toSet()
     }
 
     private fun findAdbExecutable(): String? {
@@ -112,12 +162,11 @@ class LogcatDataPlugin : DataPlugin {
             "Library/Android/sdk/platform-tools/adb",
         )
         if (macDefault.canExecute()) return macDefault.absolutePath
-        // Last resort: rely on PATH.
         return "adb"
     }
 
     private companion object {
         const val BATCH_SIZE = 100
-        const val RETRY_DELAY_MS = 2_000L
+        const val POLL_INTERVAL_MS = 2_000L
     }
 }
