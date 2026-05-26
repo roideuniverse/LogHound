@@ -128,4 +128,8 @@ class LogRepositoryImpl(
         }
         return total
     }
+
+    override suspend fun clearStore() {
+        dataStore.clearAll()
+    }
 }

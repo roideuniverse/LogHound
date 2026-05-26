@@ -63,6 +63,14 @@ internal class SqlDelightLogDataStore(private val db: LogHoundDb) : LogDataStore
     override suspend fun countAll(): Long = withContext(Dispatchers.IO) {
         queries.countAll().executeAsOne()
     }
+
+    override suspend fun clearAll() = withContext(Dispatchers.IO) {
+        // IDs continue from `max(old) + 1` after a clear — SQLDelight has no
+        // typed surface for resetting `sqlite_sequence`. That's harmless: the
+        // LazyColumn keys, UUID Grouping checkpoint, and ingested-flow
+        // subscribers all care about uniqueness, not numbering.
+        queries.clearAll()
+    }
 }
 
 private fun LogsRow.toLogEntry() = LogEntry(

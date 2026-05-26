@@ -123,6 +123,24 @@ class UuidGroupingPlugin(
         _progress.value = _progress.value.copy(scanning = false)
     }
 
+    /**
+     * Drop every derived row + reset the backfill checkpoint. Called by the
+     * host after the main logs DB has been wiped (Clear logs / End session).
+     * After this returns, the next `run()` re-backfills from id 0 on the
+     * fresh logs DB.
+     */
+    override suspend fun clearStore() {
+        val q = db.uuidsQueries
+        withContext(Dispatchers.Default) {
+            db.transaction {
+                q.clearOccurrences()
+                q.clearUuids()
+                q.setMeta(META_LAST_SCANNED_ID, "0")
+            }
+        }
+        _progress.value = BackfillProgress()
+    }
+
     private suspend fun collectIngested(
         repository: LogRepository,
         dispatcher: CoroutineDispatcher,

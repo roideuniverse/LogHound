@@ -22,5 +22,18 @@ interface LogRepository {
      */
     suspend fun queryByIds(ids: Collection<Long>): List<LogEntry>
 
+    /**
+     * Truncate the main `logs` store. Used by the host's clear-logs flow and
+     * by the Sessions plugin's end-and-archive flow. After this returns,
+     * `query(...)` reports zero entries and `ingested` continues to receive
+     * fresh batches from active data plugins.
+     *
+     * Plugins observing `ingested` see no side-effect from clearing — they
+     * just stop receiving rows tied to the old IDs. Plugins that maintain
+     * derived state should additionally have `DataPlugin.clearStore()`
+     * invoked by the host so the two stores stay consistent.
+     */
+    suspend fun clearStore()
+
     val ingested: Flow<List<LogEntry>>
 }

@@ -20,4 +20,11 @@ interface LogDataStore {
     suspend fun selectByIds(ids: Collection<Long>): List<LogEntry>
 
     suspend fun countAll(): Long
+
+    /**
+     * Truncate every row from the underlying `logs` store. ID auto-increment
+     * counters reset so the next inserted entry starts at id 1 again. The
+     * underlying file stays open and connected — only the rows are gone.
+     */
+    suspend fun clearAll()
 }
