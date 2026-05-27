@@ -58,6 +58,7 @@ import com.roideuniverse.loghound.core.LogEntry
 import com.roideuniverse.loghound.core.LogFilter
 import com.roideuniverse.loghound.core.LogRepository
 import com.roideuniverse.loghound.core.UIPlugin
+import com.roideuniverse.loghound.design.LocalActiveDevice
 import com.roideuniverse.loghound.design.LogHoundDesign
 import com.roideuniverse.loghound.design.PriorityBadge
 
@@ -70,7 +71,16 @@ class LogViewerPlugin(
     @Composable
     override fun content(modifier: Modifier) {
         var queryText by remember { mutableStateOf("") }
-        val filter: LogFilter = remember(queryText) { FilterQueryParser.parse(queryText) }
+        val activeDevice = LocalActiveDevice.current
+        val parsedFilter: LogFilter = remember(queryText) { FilterQueryParser.parse(queryText) }
+        // The status-bar pill scopes every query by default; an explicit
+        // `device:` clause in the filter bar overrides the pill so the user
+        // can still inspect another device's stream without changing the
+        // app-wide active scope.
+        val filter: LogFilter = remember(parsedFilter, activeDevice) {
+            if (parsedFilter.deviceId != null) parsedFilter
+            else parsedFilter.copy(deviceId = activeDevice?.value)
+        }
         val entries = remember { mutableStateListOf<LogEntry>() }
         val listState = rememberLazyListState()
         var loadingOlder by remember { mutableStateOf(false) }

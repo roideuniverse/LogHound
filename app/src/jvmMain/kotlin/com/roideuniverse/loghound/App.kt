@@ -20,6 +20,8 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -30,7 +32,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.roideuniverse.loghound.core.DeviceId
+import com.roideuniverse.loghound.core.LogRepository
 import com.roideuniverse.loghound.core.UIPlugin
+import com.roideuniverse.loghound.design.LocalActiveDevice
 import com.roideuniverse.loghound.design.LogHoundDesign
 
 private const val CORE_LOG_VIEWER_ID = "core.log-viewer"
@@ -39,6 +44,7 @@ private val TAB_BAR_HEIGHT = 36.dp
 @Composable
 fun App(
     plugins: List<UIPlugin>,
+    repository: LogRepository,
     sidebarVisible: Boolean = true,
 ) {
     MaterialTheme {
@@ -49,6 +55,14 @@ fun App(
         }
         var activeTabId by remember(plugins) {
             mutableStateOf(plugins.firstOrNull { it.id == CORE_LOG_VIEWER_ID }?.id)
+        }
+        var activeDevice by remember { mutableStateOf<DeviceId?>(null) }
+        val detectedDevices by repository.devices.collectAsState()
+        // If the user-selected device disappears (disconnect), fall back to
+        // "All devices" rather than silently filtering against a serial that
+        // produces no rows.
+        if (activeDevice != null && detectedDevices.none { it.id == activeDevice }) {
+            activeDevice = null
         }
 
         fun openOrFocus(plugin: UIPlugin) {
@@ -91,7 +105,9 @@ fun App(
                 Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
                     val active = openTabs.firstOrNull { it.id == activeTabId }
                     if (active != null) {
-                        active.content(Modifier.fillMaxSize())
+                        CompositionLocalProvider(LocalActiveDevice provides activeDevice) {
+                            active.content(Modifier.fillMaxSize())
+                        }
                     } else {
                         Box(
                             modifier = Modifier.fillMaxSize(),

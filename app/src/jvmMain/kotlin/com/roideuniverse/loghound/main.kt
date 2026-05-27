@@ -65,6 +65,6 @@ fun main() = application {
             Menu("View") { Item("Toggle Sidebar", onClick = { sidebarVisible = !sidebarVisible }) }
             Menu("Help") { Item("About", onClick = {}) }
         }
-        App(plugins = uiPlugins, sidebarVisible = sidebarVisible)
+        App(plugins = uiPlugins, repository = repository, sidebarVisible = sidebarVisible)
     }
 }
