@@ -85,42 +85,50 @@ fun App(
             }
         }
 
-        Row(modifier = Modifier.fillMaxSize()) {
-            if (sidebarVisible) {
-                Sidebar(
-                    plugins = plugins,
-                    activeTabId = activeTabId,
-                    onClick = { openOrFocus(it) },
-                )
-                VerticalDivider(color = LogHoundDesign.Colors.Border)
-            }
-            Column(modifier = Modifier.weight(1f).fillMaxHeight()) {
-                TabBar(
-                    tabs = openTabs,
-                    activeTabId = activeTabId,
-                    onSelect = { activeTabId = it.id },
-                    onClose = { closeTab(it) },
-                )
-                HorizontalDivider(color = LogHoundDesign.Colors.Border)
-                Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
-                    val active = openTabs.firstOrNull { it.id == activeTabId }
-                    if (active != null) {
-                        CompositionLocalProvider(LocalActiveDevice provides activeDevice) {
-                            active.content(Modifier.fillMaxSize())
-                        }
-                    } else {
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Text(
-                                "No tab open. Pick a plugin from the sidebar.",
-                                style = LogHoundDesign.Text.Status,
-                            )
+        Column(modifier = Modifier.fillMaxSize()) {
+            Row(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                if (sidebarVisible) {
+                    Sidebar(
+                        plugins = plugins,
+                        activeTabId = activeTabId,
+                        onClick = { openOrFocus(it) },
+                    )
+                    VerticalDivider(color = LogHoundDesign.Colors.Border)
+                }
+                Column(modifier = Modifier.weight(1f).fillMaxHeight()) {
+                    TabBar(
+                        tabs = openTabs,
+                        activeTabId = activeTabId,
+                        onSelect = { activeTabId = it.id },
+                        onClose = { closeTab(it) },
+                    )
+                    HorizontalDivider(color = LogHoundDesign.Colors.Border)
+                    Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                        val active = openTabs.firstOrNull { it.id == activeTabId }
+                        if (active != null) {
+                            CompositionLocalProvider(LocalActiveDevice provides activeDevice) {
+                                active.content(Modifier.fillMaxSize())
+                            }
+                        } else {
+                            Box(
+                                modifier = Modifier.fillMaxSize(),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Text(
+                                    "No tab open. Pick a plugin from the sidebar.",
+                                    style = LogHoundDesign.Text.Status,
+                                )
+                            }
                         }
                     }
                 }
             }
+            HorizontalDivider(color = LogHoundDesign.Colors.Border)
+            StatusBar(
+                devices = detectedDevices,
+                activeDevice = activeDevice,
+                onSelectDevice = { activeDevice = it },
+            )
         }
     }
 }

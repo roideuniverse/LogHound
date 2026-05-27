@@ -85,6 +85,21 @@ object LogHoundDesign {
          * active item, etc.). One step darker than HoverBackground. */
         val PressedBackground = Color(0xFFEBEBEB)
 
+        /** Per-device tint palette. Auto-assigned round-robin in the order
+         * devices are first seen; persists in-memory for the session (the
+         * state.json key-by-serial persistence from the spec is a follow-up).
+         * The first two values match the Swiss spec's `--color-dev-1` (blue)
+         * and `--color-dev-2` (orange); the remaining four extend it without
+         * straying outside the existing priority palette tones. */
+        val DevicePalette: List<Color> = listOf(
+            Color(0xFF0066FF), // Primary blue
+            Color(0xFFFF6B00), // Warn orange
+            Color(0xFF00A04C), // Verbose green
+            Color(0xFFE52E2E), // Error red
+            Color(0xFF8000FF), // purple
+            Color(0xFF00B5D8), // teal
+        )
+
         /** Muted gray — timestamps, inactive tabs, secondary labels, close glyphs. */
         val Secondary = Color(0xFF8C8C8C)
 
