@@ -18,6 +18,7 @@ kotlin {
             implementation(project(":plugin-dsl"))
             implementation(project(":plugins:ui:log-viewer"))
             implementation(project(":plugins:ui:uuid-grouping"))
+            implementation(project(":plugins:ui:sessions"))
             implementation(project(":plugins:data:logcat"))
             implementation(compose.runtime)
             implementation(compose.foundation)

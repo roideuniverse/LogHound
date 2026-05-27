@@ -13,6 +13,9 @@ import com.roideuniverse.loghound.core.impl.LogRepositoryImpl
 import com.roideuniverse.loghound.database.createLogDataStore
 import com.roideuniverse.loghound.plugins.logcat.LogcatDataPlugin
 import com.roideuniverse.loghound.plugins.logviewer.LogViewerPlugin
+import com.roideuniverse.loghound.plugins.sessions.SessionsConfig
+import com.roideuniverse.loghound.plugins.sessions.SessionsManager
+import com.roideuniverse.loghound.plugins.sessions.StoreClearer
 import com.roideuniverse.loghound.plugins.uuidgrouping.UuidGroupingPlugin
 import com.roideuniverse.loghound.scripting.PluginScriptHost
 import kotlinx.coroutines.CoroutineScope
@@ -23,24 +26,46 @@ import kotlinx.coroutines.launch
 import java.io.File
 
 fun main() = application {
-    val dbFile = File(System.getProperty("user.home"), ".loghound/logs.db")
+    val home = File(System.getProperty("user.home"))
+    val dbFile = File(home, ".loghound/logs.db")
     val dataStore = remember { createLogDataStore(dbFile) }
     val repository = remember { LogRepositoryImpl(dataStore) }
 
     val uuidGrouping = remember(repository) {
         UuidGroupingPlugin(
-            databaseFile = File(System.getProperty("user.home"), ".loghound/plugins/uuid-grouping.db"),
+            databaseFile = File(home, ".loghound/plugins/uuid-grouping.db"),
             repository = repository,
         )
     }
 
     val scriptedPlugins = remember {
-        PluginScriptHost.loadAll(File(System.getProperty("user.home"), ".loghound/plugins"))
+        PluginScriptHost.loadAll(File(home, ".loghound/plugins"))
     }
 
     val dataPlugins: List<DataPlugin> = remember {
         listOf<DataPlugin>(LogcatDataPlugin(), uuidGrouping) + scriptedPlugins
     }
+
+    // Sessions manager owns the live-vs-archive split. StoreClearer wipes
+    // the live logs.db plus every DataPlugin's derived state in one shot
+    // (the order is repository first, then plugins, so plugin observers
+    // don't see ID gaps mid-clear).
+    val sessionsManager = remember(repository, dataPlugins) {
+        SessionsManager(
+            config = SessionsConfig(
+                sessionsDbFile = File(home, ".loghound/sessions.db"),
+                liveLogsDbFile = dbFile,
+                pluginDbDir = File(home, ".loghound/plugins"),
+                archivesDir = File(home, ".loghound/archives"),
+            ),
+            repository = repository,
+            storeClearer = StoreClearer {
+                repository.clearStore()
+                dataPlugins.forEach { runCatching { it.clearStore() } }
+            },
+        )
+    }
+
     val uiPlugins: List<UIPlugin> = remember {
         listOf<UIPlugin>(LogViewerPlugin(repository), uuidGrouping) + scriptedPlugins
     }
@@ -48,6 +73,9 @@ fun main() = application {
     val backgroundScope = remember { CoroutineScope(SupervisorJob() + Dispatchers.IO) }
     remember(dataPlugins) {
         dataPlugins.forEach { plugin -> backgroundScope.launch { plugin.run(repository) } }
+    }
+    remember(sessionsManager) {
+        backgroundScope.launch { sessionsManager.initialize() }
     }
 
     var sidebarVisible by remember { mutableStateOf(true) }
