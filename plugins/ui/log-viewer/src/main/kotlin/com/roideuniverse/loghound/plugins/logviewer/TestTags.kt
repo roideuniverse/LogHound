@@ -10,6 +10,10 @@ object TestTags {
     const val LOG_ROW_DETAIL_META = "logViewer.logRowDetailMeta"
     const val LOG_ROW_DETAIL_MESSAGE = "logViewer.logRowDetailMessage"
     const val FILTER_INPUT = "logViewer.filterInput"
+    const val FILTER_BUILDER_BUTTON = "logViewer.filterBuilderButton"
+    const val FILTER_BUILDER_PANEL = "logViewer.filterBuilderPanel"
+    const val FILTER_BUILDER_VALUE = "logViewer.filterBuilderValue"
+    const val FILTER_BUILDER_APPLY = "logViewer.filterBuilderApply"
     const val JUMP_TO_BOTTOM = "logViewer.jumpToBottom"
 
     const val PACKAGE_LOOKUP_INPUT = "logViewer.packageLookupInput"

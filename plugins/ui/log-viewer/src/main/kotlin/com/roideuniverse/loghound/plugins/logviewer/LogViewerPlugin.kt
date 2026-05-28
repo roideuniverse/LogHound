@@ -23,10 +23,15 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.ui.window.Popup
+import androidx.compose.ui.window.PopupProperties
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -322,7 +327,10 @@ private fun LogRow(entry: LogEntry) {
 @Composable
 private fun FilterBar(query: String, onQueryChange: (String) -> Unit) {
     Surface(modifier = Modifier.fillMaxWidth(), color = LogHoundDesign.Colors.Surface) {
-        Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             val shape = RoundedCornerShape(4.dp)
             val style: TextStyle = LocalTextStyle.current.merge(LogHoundDesign.Text.Field)
             BasicTextField(
@@ -331,7 +339,7 @@ private fun FilterBar(query: String, onQueryChange: (String) -> Unit) {
                 singleLine = true,
                 textStyle = style,
                 modifier = Modifier
-                    .fillMaxWidth()
+                    .weight(1f)
                     .clip(shape)
                     .background(LogHoundDesign.Colors.TextFieldBackground)
                     .border(1.dp, LogHoundDesign.Colors.TextFieldBorder, shape)
@@ -350,6 +358,145 @@ private fun FilterBar(query: String, onQueryChange: (String) -> Unit) {
                     }
                 },
             )
+            Spacer(Modifier.width(8.dp))
+            FilterBuilderButton(
+                onAppend = { clause ->
+                    val sep = if (query.isBlank()) "" else " "
+                    onQueryChange("$query$sep$clause")
+                },
+            )
         }
     }
+}
+
+private val FILTER_CLAUSE_KEYS: List<String> = listOf("tag", "level", "pid", "tid", "package", "device")
+
+@Composable
+private fun FilterBuilderButton(onAppend: (String) -> Unit) {
+    var open by remember { mutableStateOf(false) }
+    Box {
+        TextButton(
+            onClick = { open = true },
+            modifier = Modifier.testTag(TestTags.FILTER_BUILDER_BUTTON),
+        ) {
+            Text("[ + ]", style = LogHoundDesign.Text.Button)
+        }
+        if (open) {
+            Popup(
+                alignment = Alignment.TopEnd,
+                onDismissRequest = { open = false },
+                properties = PopupProperties(focusable = true),
+            ) {
+                FilterBuilderPanel(
+                    onApply = { key, value ->
+                        if (key.isNotBlank() && value.isNotBlank()) {
+                            onAppend("$key:$value")
+                        }
+                        open = false
+                    },
+                    onDismiss = { open = false },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun FilterBuilderPanel(
+    onApply: (key: String, value: String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var selectedKey by remember { mutableStateOf(FILTER_CLAUSE_KEYS.first()) }
+    var keyMenuOpen by remember { mutableStateOf(false) }
+    var value by remember { mutableStateOf("") }
+    val shape = RoundedCornerShape(6.dp)
+
+    Surface(
+        modifier = Modifier
+            .clip(shape)
+            .border(1.dp, LogHoundDesign.Colors.Border, shape)
+            .testTag(TestTags.FILTER_BUILDER_PANEL),
+        color = LogHoundDesign.Colors.Background,
+    ) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            Text(
+                "Add filter clause",
+                style = LogHoundDesign.Text.Tab.copy(fontWeight = FontWeight.SemiBold),
+            )
+            Spacer(Modifier.height(8.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box {
+                    TextButton(onClick = { keyMenuOpen = true }) {
+                        Text(selectedKey, style = LogHoundDesign.Text.Button)
+                        Text(" ▾", style = LogHoundDesign.Text.Status)
+                    }
+                    DropdownMenu(
+                        expanded = keyMenuOpen,
+                        onDismissRequest = { keyMenuOpen = false },
+                    ) {
+                        for (key in FILTER_CLAUSE_KEYS) {
+                            DropdownMenuItem(
+                                text = { Text(key, style = LogHoundDesign.Text.Tab) },
+                                onClick = {
+                                    selectedKey = key
+                                    keyMenuOpen = false
+                                },
+                            )
+                        }
+                    }
+                }
+                Spacer(Modifier.width(8.dp))
+                val fieldShape = RoundedCornerShape(4.dp)
+                BasicTextField(
+                    value = value,
+                    onValueChange = { value = it },
+                    singleLine = true,
+                    textStyle = LogHoundDesign.Text.Field,
+                    modifier = Modifier
+                        .width(180.dp)
+                        .clip(fieldShape)
+                        .background(LogHoundDesign.Colors.TextFieldBackground)
+                        .border(1.dp, LogHoundDesign.Colors.TextFieldBorder, fieldShape)
+                        .padding(horizontal = 8.dp, vertical = 6.dp)
+                        .testTag(TestTags.FILTER_BUILDER_VALUE),
+                    decorationBox = { inner ->
+                        Box {
+                            if (value.isEmpty()) {
+                                Text(
+                                    placeholderFor(selectedKey),
+                                    color = LogHoundDesign.Colors.Placeholder,
+                                    style = LogHoundDesign.Text.Field,
+                                )
+                            }
+                            inner()
+                        }
+                    },
+                )
+            }
+            Spacer(Modifier.height(12.dp))
+            Row(horizontalArrangement = Arrangement.End, modifier = Modifier.fillMaxWidth()) {
+                TextButton(onClick = onDismiss) {
+                    Text("Cancel", style = LogHoundDesign.Text.Button)
+                }
+                Spacer(Modifier.width(4.dp))
+                TextButton(
+                    onClick = { onApply(selectedKey, value.trim()) },
+                    modifier = Modifier.testTag(TestTags.FILTER_BUILDER_APPLY),
+                    enabled = value.isNotBlank(),
+                ) {
+                    Text("Add", style = LogHoundDesign.Text.Button.copy(color = LogHoundDesign.Colors.Primary))
+                }
+            }
+        }
+    }
+}
+
+private fun placeholderFor(key: String): String = when (key) {
+    "tag" -> "Activity"
+    "level" -> "W"
+    "pid" -> "1234"
+    "tid" -> "5678"
+    "package" -> "com.app.debug"
+    "device" -> "Pixel 8"
+    else -> ""
 }
