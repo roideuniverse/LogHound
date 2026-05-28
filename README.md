@@ -185,6 +185,20 @@ You can also open LogHound at any point during the capture; the Log Viewer's ini
 
 If `:app:run` left a window open after a crash, close the LogHound window (the JVM will exit). For the bundled app: quit it from the Dock.
 
+## Upgrading from older snapshots
+
+LogHound is pre-1.0 and ships schema changes without migration code (see the
+`feedback_no_legacy_migration` convention). When the schema changes, run this
+once before relaunching to start fresh:
+
+```sh
+rm -f ~/.loghound/logs.db*
+rm -rf ~/.loghound/plugins/*.db*
+```
+
+Sessions and archives at `~/.loghound/sessions.db` / `~/.loghound/archives/`
+survive — only the live stores get wiped.
+
 ## Configuration
 
 LogHound reads `~/.loghound/config.properties` once on launch. Today the file

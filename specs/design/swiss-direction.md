@@ -10,17 +10,21 @@
 > Implementation is incremental, one concern per PR:
 >
 > 1. ✅ Tokens in `design/LogHoundDesign.kt` ([#32](https://github.com/roideuniverse/LogHound/pull/32) — colors only; fonts deferred to step 2)
-> 2. ✅ Bundle Instrument Sans + JetBrains Mono and switch font families (this PR)
-> 3. Badge-pill priority renderer in log rows (visual replacement for colored text)
-> 4. Hover / click-to-expand row states
-> 5. Sub-tab strip layout updates to match Swiss heights / borders
-> 6. Multi-device sub-tabs + status-bar pill ([issue #26](https://github.com/roideuniverse/LogHound/issues/26))
-> 7. Sessions plugin + status-bar pill ([issue #21](https://github.com/roideuniverse/LogHound/issues/21))
-> 8. Filter Builder popover ([new issue when scoped])
+> 2. ✅ Bundle Instrument Sans + JetBrains Mono and switch font families ([#32 bundle](https://github.com/roideuniverse/LogHound/pull/32))
+> 3. ✅ Badge-pill priority renderer in log rows (visual replacement for colored text)
+> 4. ✅ Hover / click-to-expand row states
+> 5. ✅ Sub-tab strip layout updates to match Swiss heights / borders
+> 6. ✅ Multi-device sub-tabs + status-bar pill ([issue #26](https://github.com/roideuniverse/LogHound/issues/26) — core shipped, follow-ups tracked below)
+> 7. ✅ Sessions plugin + status-bar pill ([issue #21](https://github.com/roideuniverse/LogHound/issues/21) — core shipped, archive sub-tabs deferred)
+> 8. ✅ Filter Builder popover (v1 — chip-display + AND/OR are follow-ups)
 >
-> Each PR should land green against the existing screens before the next
-> begins; if a Swiss decision conflicts with shipped behavior, the spec
-> wins — file an issue, don't paper over.
+> The remaining polish from #21 and #26 (per-device sub-tabs, editable
+> device labels in state.json, connection-state pulse, archive sub-tabs,
+> rename/export/delete archive actions) lives as follow-up issues; the
+> shipped slice covers the headline flow for each.
+>
+> If a Swiss decision conflicts with shipped behavior, the spec wins —
+> file an issue, don't paper over.
 
 ---
 
