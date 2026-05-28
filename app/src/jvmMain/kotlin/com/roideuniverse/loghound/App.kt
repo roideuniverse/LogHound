@@ -37,6 +37,8 @@ import com.roideuniverse.loghound.core.LogRepository
 import com.roideuniverse.loghound.core.UIPlugin
 import com.roideuniverse.loghound.design.LocalActiveDevice
 import com.roideuniverse.loghound.design.LogHoundDesign
+import com.roideuniverse.loghound.plugins.sessions.SessionsManager
+import kotlinx.coroutines.launch
 
 private const val CORE_LOG_VIEWER_ID = "core.log-viewer"
 private val TAB_BAR_HEIGHT = 36.dp
@@ -45,9 +47,12 @@ private val TAB_BAR_HEIGHT = 36.dp
 fun App(
     plugins: List<UIPlugin>,
     repository: LogRepository,
+    sessionsManager: SessionsManager,
     sidebarVisible: Boolean = true,
 ) {
     MaterialTheme {
+        val activeSession by sessionsManager.active.collectAsState()
+        val coroutineScope = androidx.compose.runtime.rememberCoroutineScope()
         val openTabs = remember(plugins) {
             mutableStateListOf<UIPlugin>().apply {
                 plugins.firstOrNull { it.id == CORE_LOG_VIEWER_ID }?.let { add(it) }
@@ -128,6 +133,10 @@ fun App(
                 devices = detectedDevices,
                 activeDevice = activeDevice,
                 onSelectDevice = { activeDevice = it },
+                activeSession = activeSession,
+                onEndAndStartNewSession = {
+                    coroutineScope.launch { sessionsManager.endAndStartNew() }
+                },
             )
         }
     }

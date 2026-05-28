@@ -15,6 +15,7 @@ import com.roideuniverse.loghound.plugins.logcat.LogcatDataPlugin
 import com.roideuniverse.loghound.plugins.logviewer.LogViewerPlugin
 import com.roideuniverse.loghound.plugins.sessions.SessionsConfig
 import com.roideuniverse.loghound.plugins.sessions.SessionsManager
+import com.roideuniverse.loghound.plugins.sessions.SessionsPlugin
 import com.roideuniverse.loghound.plugins.sessions.StoreClearer
 import com.roideuniverse.loghound.plugins.uuidgrouping.UuidGroupingPlugin
 import com.roideuniverse.loghound.scripting.PluginScriptHost
@@ -66,8 +67,10 @@ fun main() = application {
         )
     }
 
-    val uiPlugins: List<UIPlugin> = remember {
-        listOf<UIPlugin>(LogViewerPlugin(repository), uuidGrouping) + scriptedPlugins
+    val sessionsPlugin = remember(sessionsManager) { SessionsPlugin(sessionsManager) }
+
+    val uiPlugins: List<UIPlugin> = remember(sessionsPlugin) {
+        listOf<UIPlugin>(LogViewerPlugin(repository), uuidGrouping, sessionsPlugin) + scriptedPlugins
     }
 
     val backgroundScope = remember { CoroutineScope(SupervisorJob() + Dispatchers.IO) }
@@ -93,6 +96,11 @@ fun main() = application {
             Menu("View") { Item("Toggle Sidebar", onClick = { sidebarVisible = !sidebarVisible }) }
             Menu("Help") { Item("About", onClick = {}) }
         }
-        App(plugins = uiPlugins, repository = repository, sidebarVisible = sidebarVisible)
+        App(
+            plugins = uiPlugins,
+            repository = repository,
+            sessionsManager = sessionsManager,
+            sidebarVisible = sidebarVisible,
+        )
     }
 }

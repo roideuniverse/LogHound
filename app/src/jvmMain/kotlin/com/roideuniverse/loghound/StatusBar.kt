@@ -32,6 +32,10 @@ import androidx.compose.ui.unit.dp
 import com.roideuniverse.loghound.core.Device
 import com.roideuniverse.loghound.core.DeviceId
 import com.roideuniverse.loghound.design.LogHoundDesign
+import com.roideuniverse.loghound.plugins.sessions.Session
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 /**
  * Stable test tags for the status-bar UI. Loadbearing for E2E — renames
@@ -40,6 +44,8 @@ import com.roideuniverse.loghound.design.LogHoundDesign
 object StatusBarTestTags {
     const val DEVICE_PILL = "statusBar.devicePill"
     const val DEVICE_MENU_ITEM = "statusBar.devicePillItem"
+    const val SESSION_PILL = "statusBar.sessionPill"
+    const val SESSION_END_AND_NEW = "statusBar.sessionEndAndNew"
 }
 
 /**
@@ -51,6 +57,8 @@ fun StatusBar(
     devices: Set<Device>,
     activeDevice: DeviceId?,
     onSelectDevice: (DeviceId?) -> Unit,
+    activeSession: Session?,
+    onEndAndStartNewSession: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Surface(
@@ -66,6 +74,11 @@ fun StatusBar(
                 devices = devices,
                 activeDevice = activeDevice,
                 onSelectDevice = onSelectDevice,
+            )
+            Spacer(Modifier.width(8.dp))
+            SessionPill(
+                session = activeSession,
+                onEndAndStartNew = onEndAndStartNewSession,
             )
         }
     }
@@ -182,4 +195,73 @@ private fun pillLabel(devices: List<Device>, active: DeviceId?): String {
         active == null -> if (devices.size == 1) devices[0].label else "${devices.size} devices"
         else -> devices.find { it.id == active }?.label ?: active.value
     }
+}
+
+@Composable
+private fun SessionPill(
+    session: Session?,
+    onEndAndStartNew: () -> Unit,
+) {
+    var menuOpen by remember { mutableStateOf(false) }
+    Box {
+        Row(
+            modifier = Modifier
+                .clip(RoundedCornerShape(4.dp))
+                .background(LogHoundDesign.Colors.PressedBackground)
+                .clickable(enabled = session != null) { menuOpen = true }
+                .padding(horizontal = 8.dp, vertical = 4.dp)
+                .testTag(StatusBarTestTags.SESSION_PILL),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text("⏱", style = LogHoundDesign.Text.Status)
+            Spacer(Modifier.width(6.dp))
+            Text(
+                sessionLabel(session),
+                style = LogHoundDesign.Text.Status.copy(color = LogHoundDesign.Colors.OnSurface),
+            )
+            if (session != null) {
+                Spacer(Modifier.width(4.dp))
+                Text("▾", style = LogHoundDesign.Text.Status)
+            }
+        }
+        if (session != null) {
+            DropdownMenu(
+                expanded = menuOpen,
+                onDismissRequest = { menuOpen = false },
+            ) {
+                DropdownMenuItem(
+                    text = {
+                        Column {
+                            Text(session.name, style = LogHoundDesign.Text.Tab.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold))
+                            Text(
+                                "Started " + formatTimestamp(session.startedAt),
+                                style = LogHoundDesign.Text.Status,
+                            )
+                        }
+                    },
+                    enabled = false,
+                    onClick = {},
+                )
+                HorizontalDivider(color = LogHoundDesign.Colors.Border)
+                DropdownMenuItem(
+                    text = { Text("End & Start New Session", style = LogHoundDesign.Text.Tab) },
+                    onClick = {
+                        menuOpen = false
+                        onEndAndStartNew()
+                    },
+                    modifier = Modifier.testTag(StatusBarTestTags.SESSION_END_AND_NEW),
+                )
+            }
+        }
+    }
+}
+
+private fun sessionLabel(session: Session?): String {
+    if (session == null) return "No session"
+    return session.name
+}
+
+private fun formatTimestamp(millis: Long): String {
+    val fmt = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.US)
+    return fmt.format(Date(millis))
 }
