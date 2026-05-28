@@ -54,8 +54,8 @@ BATCH_SIZE = 100
 DEFAULT_PROGRESS_EVERY = 10_000
 INSERT_SQL = (
     "INSERT INTO logs"
-    "(timestamp, pid, tid, priority, tag, message, package_name) "
-    "VALUES (?, ?, ?, ?, ?, ?, ?)"
+    "(timestamp, pid, tid, priority, tag, message, package_name, device_id) "
+    "VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
 )
 
 
@@ -73,6 +73,16 @@ def parse_args() -> argparse.Namespace:
         help="Logcat file to read (default: stdin)",
     )
     parser.add_argument(
+        "--device-id",
+        default=None,
+        help=(
+            "Tag injected rows with this device id. Defaults to "
+            "`inject:<input-basename>` when --input is given, or `inject:stdin` "
+            "when reading from stdin. Pick something stable per session so the "
+            "device pill / filter clauses can scope to it."
+        ),
+    )
+    parser.add_argument(
         "--progress-every",
         type=int,
         default=DEFAULT_PROGRESS_EVERY,
@@ -85,6 +95,12 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
+def default_device_id(input_path: Optional[str]) -> str:
+    if input_path:
+        return f"inject:{Path(input_path).name}"
+    return "inject:stdin"
+
+
 def open_source(path: Optional[str]) -> TextIO:
     return open(path) if path else sys.stdin
 
@@ -93,6 +109,7 @@ def main() -> int:
     args = parse_args()
 
     progress_every: int = max(0, args.progress_every)
+    device_id: str = args.device_id or default_device_id(args.input)
 
     db_path = Path(args.db)
     if not db_path.exists():
@@ -148,6 +165,7 @@ def main() -> int:
                     tag.strip(),
                     message,
                     None,
+                    device_id,
                 ),
             )
             counters["inserted"] += 1

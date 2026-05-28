@@ -1,5 +1,6 @@
 package com.roideuniverse.loghound.core.impl
 
+import com.roideuniverse.loghound.core.Device
 import com.roideuniverse.loghound.core.LogEntry
 import com.roideuniverse.loghound.core.LogFilter
 import com.roideuniverse.loghound.core.LogPage
@@ -7,7 +8,10 @@ import com.roideuniverse.loghound.core.LogRepository
 import com.roideuniverse.loghound.database.LogDataStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.asStateFlow
 
 class LogRepositoryImpl(
     private val dataStore: LogDataStore,
@@ -15,6 +19,13 @@ class LogRepositoryImpl(
 
     private val _ingested = MutableSharedFlow<List<LogEntry>>(extraBufferCapacity = 64)
     override val ingested: Flow<List<LogEntry>> = _ingested.asSharedFlow()
+
+    private val _devices = MutableStateFlow<Set<Device>>(emptySet())
+    override val devices: StateFlow<Set<Device>> = _devices.asStateFlow()
+
+    override fun publishDevices(set: Set<Device>) {
+        _devices.value = set
+    }
 
     override suspend fun append(batch: List<LogEntry>) {
         if (batch.isEmpty()) return
@@ -127,5 +138,9 @@ class LogRepositoryImpl(
             if (rows.size < pageSize) break
         }
         return total
+    }
+
+    override suspend fun clearStore() {
+        dataStore.clearAll()
     }
 }

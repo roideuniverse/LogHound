@@ -20,6 +20,8 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -30,7 +32,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.roideuniverse.loghound.core.DeviceId
+import com.roideuniverse.loghound.core.LogRepository
 import com.roideuniverse.loghound.core.UIPlugin
+import com.roideuniverse.loghound.design.LocalActiveDevice
+import com.roideuniverse.loghound.design.LogHoundDesign
+import com.roideuniverse.loghound.plugins.sessions.SessionsManager
+import kotlinx.coroutines.launch
 
 private const val CORE_LOG_VIEWER_ID = "core.log-viewer"
 private val TAB_BAR_HEIGHT = 36.dp
@@ -38,9 +46,13 @@ private val TAB_BAR_HEIGHT = 36.dp
 @Composable
 fun App(
     plugins: List<UIPlugin>,
+    repository: LogRepository,
+    sessionsManager: SessionsManager,
     sidebarVisible: Boolean = true,
 ) {
     MaterialTheme {
+        val activeSession by sessionsManager.active.collectAsState()
+        val coroutineScope = androidx.compose.runtime.rememberCoroutineScope()
         val openTabs = remember(plugins) {
             mutableStateListOf<UIPlugin>().apply {
                 plugins.firstOrNull { it.id == CORE_LOG_VIEWER_ID }?.let { add(it) }
@@ -48,6 +60,14 @@ fun App(
         }
         var activeTabId by remember(plugins) {
             mutableStateOf(plugins.firstOrNull { it.id == CORE_LOG_VIEWER_ID }?.id)
+        }
+        var activeDevice by remember { mutableStateOf<DeviceId?>(null) }
+        val detectedDevices by repository.devices.collectAsState()
+        // If the user-selected device disappears (disconnect), fall back to
+        // "All devices" rather than silently filtering against a serial that
+        // produces no rows.
+        if (activeDevice != null && detectedDevices.none { it.id == activeDevice }) {
+            activeDevice = null
         }
 
         fun openOrFocus(plugin: UIPlugin) {
@@ -70,40 +90,54 @@ fun App(
             }
         }
 
-        Row(modifier = Modifier.fillMaxSize()) {
-            if (sidebarVisible) {
-                Sidebar(
-                    plugins = plugins,
-                    activeTabId = activeTabId,
-                    onClick = { openOrFocus(it) },
-                )
-                VerticalDivider(color = Color(0xFFCCCCCC))
-            }
-            Column(modifier = Modifier.weight(1f).fillMaxHeight()) {
-                TabBar(
-                    tabs = openTabs,
-                    activeTabId = activeTabId,
-                    onSelect = { activeTabId = it.id },
-                    onClose = { closeTab(it) },
-                )
-                HorizontalDivider(color = Color(0xFFCCCCCC))
-                Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
-                    val active = openTabs.firstOrNull { it.id == activeTabId }
-                    if (active != null) {
-                        active.content(Modifier.fillMaxSize())
-                    } else {
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Text(
-                                "No tab open. Pick a plugin from the sidebar.",
-                                color = Color(0xFF666666),
-                            )
+        Column(modifier = Modifier.fillMaxSize()) {
+            Row(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                if (sidebarVisible) {
+                    Sidebar(
+                        plugins = plugins,
+                        activeTabId = activeTabId,
+                        onClick = { openOrFocus(it) },
+                    )
+                    VerticalDivider(color = LogHoundDesign.Colors.Border)
+                }
+                Column(modifier = Modifier.weight(1f).fillMaxHeight()) {
+                    TabBar(
+                        tabs = openTabs,
+                        activeTabId = activeTabId,
+                        onSelect = { activeTabId = it.id },
+                        onClose = { closeTab(it) },
+                    )
+                    HorizontalDivider(color = LogHoundDesign.Colors.Border)
+                    Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                        val active = openTabs.firstOrNull { it.id == activeTabId }
+                        if (active != null) {
+                            CompositionLocalProvider(LocalActiveDevice provides activeDevice) {
+                                active.content(Modifier.fillMaxSize())
+                            }
+                        } else {
+                            Box(
+                                modifier = Modifier.fillMaxSize(),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Text(
+                                    "No tab open. Pick a plugin from the sidebar.",
+                                    style = LogHoundDesign.Text.Status,
+                                )
+                            }
                         }
                     }
                 }
             }
+            HorizontalDivider(color = LogHoundDesign.Colors.Border)
+            StatusBar(
+                devices = detectedDevices,
+                activeDevice = activeDevice,
+                onSelectDevice = { activeDevice = it },
+                activeSession = activeSession,
+                onEndAndStartNewSession = {
+                    coroutineScope.launch { sessionsManager.endAndStartNew() }
+                },
+            )
         }
     }
 }
@@ -116,7 +150,7 @@ private fun Sidebar(
 ) {
     Surface(
         modifier = Modifier.width(220.dp).fillMaxHeight(),
-        color = Color(0xFFF2F2F2),
+        color = LogHoundDesign.Colors.Surface,
     ) {
         LazyColumn(modifier = Modifier.fillMaxSize().padding(vertical = 4.dp)) {
             items(plugins, key = { it.id }) { plugin ->
@@ -124,13 +158,15 @@ private fun Sidebar(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .height(28.dp)
                         .clickable { onClick(plugin) }
                         .background(
-                            if (selected) Color(0xFFD9E2F3) else Color.Transparent,
+                            if (selected) LogHoundDesign.Colors.PressedBackground else Color.Transparent,
                         )
-                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                        .padding(horizontal = 8.dp),
+                    contentAlignment = Alignment.CenterStart,
                 ) {
-                    Text(plugin.name)
+                    Text(plugin.name, style = LogHoundDesign.Text.Tab)
                 }
             }
         }
@@ -146,7 +182,7 @@ private fun TabBar(
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth().height(TAB_BAR_HEIGHT),
-        color = Color(0xFFEDEDED),
+        color = LogHoundDesign.Colors.Surface,
     ) {
         Row(
             modifier = Modifier.fillMaxSize(),
@@ -160,14 +196,16 @@ private fun TabBar(
                         .fillMaxHeight()
                         .clickable { onSelect(tab) }
                         .background(
-                            if (active) Color.White else Color(0xFFEDEDED),
+                            if (active) LogHoundDesign.Colors.ActiveTabBackground else Color.Transparent,
                         )
                         .padding(start = 12.dp, end = 6.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
                         tab.name,
-                        fontWeight = if (active) FontWeight.Bold else FontWeight.Normal,
+                        style = LogHoundDesign.Text.Tab.copy(
+                            fontWeight = if (active) FontWeight.SemiBold else FontWeight.Medium,
+                        ),
                     )
                     Box(
                         modifier = Modifier
@@ -175,10 +213,10 @@ private fun TabBar(
                             .clickable { onClose(tab) }
                             .padding(horizontal = 4.dp),
                     ) {
-                        Text("✕", color = Color(0xFF666666))
+                        Text("✕", style = LogHoundDesign.Text.TabClose)
                     }
                 }
-                VerticalDivider(color = Color(0xFFE0E0E0))
+                VerticalDivider(color = LogHoundDesign.Colors.Border)
             }
         }
     }

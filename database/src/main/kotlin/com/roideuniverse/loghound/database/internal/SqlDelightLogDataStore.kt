@@ -1,5 +1,6 @@
 package com.roideuniverse.loghound.database.internal
 
+import com.roideuniverse.loghound.core.DeviceId
 import com.roideuniverse.loghound.core.LogEntry
 import com.roideuniverse.loghound.core.LogPriority
 import com.roideuniverse.loghound.database.LogDataStore
@@ -32,6 +33,7 @@ internal class SqlDelightLogDataStore(private val db: LogHoundDb) : LogDataStore
                     tag = entry.tag,
                     message = entry.message,
                     package_name = entry.packageName,
+                    device_id = entry.deviceId.value,
                 )
             }
             lastId = queries.lastInsertRowid().executeAsOne()
@@ -63,6 +65,14 @@ internal class SqlDelightLogDataStore(private val db: LogHoundDb) : LogDataStore
     override suspend fun countAll(): Long = withContext(Dispatchers.IO) {
         queries.countAll().executeAsOne()
     }
+
+    override suspend fun clearAll() = withContext(Dispatchers.IO) {
+        // IDs continue from `max(old) + 1` after a clear — SQLDelight has no
+        // typed surface for resetting `sqlite_sequence`. That's harmless: the
+        // LazyColumn keys, UUID Grouping checkpoint, and ingested-flow
+        // subscribers all care about uniqueness, not numbering.
+        queries.clearAll()
+    }
 }
 
 private fun LogsRow.toLogEntry() = LogEntry(
@@ -74,4 +84,5 @@ private fun LogsRow.toLogEntry() = LogEntry(
     tag = tag,
     message = message,
     packageName = package_name,
+    deviceId = DeviceId(device_id),
 )

@@ -1,0 +1,41 @@
+CREATE TABLE sessions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+    name TEXT NOT NULL,
+    started_at INTEGER NOT NULL,  -- epoch ms
+    ended_at INTEGER,             -- epoch ms; NULL = currently active
+    archive_dir TEXT,             -- absolute path; NULL for the active session
+    line_count INTEGER NOT NULL DEFAULT 0,
+    notes TEXT
+);
+
+CREATE INDEX sessions_started_at_desc ON sessions(started_at DESC);
+
+-- The single row with ended_at IS NULL is the "current" session. Constraint
+-- enforced at the application layer (SQLDelight doesn't model partial-unique
+-- indexes well in our setup); SessionsManager guarantees at most one open
+-- session by ending the prior one inside the same transaction as starting
+-- the next.
+
+insertSession:
+INSERT INTO sessions(name, started_at, line_count) VALUES (?, ?, 0);
+
+endSession:
+UPDATE sessions SET ended_at = :endedAt, archive_dir = :archiveDir, line_count = :lineCount WHERE id = :id;
+
+renameSession:
+UPDATE sessions SET name = :name WHERE id = :id;
+
+selectActive:
+SELECT * FROM sessions WHERE ended_at IS NULL ORDER BY started_at DESC LIMIT 1;
+
+selectArchived:
+SELECT * FROM sessions WHERE ended_at IS NOT NULL ORDER BY started_at DESC;
+
+selectAll:
+SELECT * FROM sessions ORDER BY started_at DESC;
+
+deleteSession:
+DELETE FROM sessions WHERE id = :id;
+
+lastInsertRowid:
+SELECT last_insert_rowid();

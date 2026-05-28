@@ -12,6 +12,7 @@ internal object FilterQueryParser {
         var pid: Int? = null
         var tid: Int? = null
         var packageName: String? = null
+        var deviceId: String? = null
         val freeTextParts = mutableListOf<String>()
 
         for (token in tokenize(query)) {
@@ -25,6 +26,7 @@ internal object FilterQueryParser {
                     "pid" -> value.toIntOrNull()?.also { pid = it } != null
                     "tid" -> value.toIntOrNull()?.also { tid = it } != null
                     "package" -> { packageName = value; true }
+                    "device" -> { deviceId = value; true }
                     else -> false
                 }
                 if (matched) continue
@@ -48,6 +50,7 @@ internal object FilterQueryParser {
             textSearch = textSearch,
             regexSearch = regexSearch,
             packageName = packageName,
+            deviceId = deviceId,
         )
     }
 

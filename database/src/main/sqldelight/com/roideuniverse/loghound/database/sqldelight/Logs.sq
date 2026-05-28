@@ -6,7 +6,8 @@ CREATE TABLE logs (
     priority TEXT NOT NULL,
     tag TEXT NOT NULL,
     message TEXT NOT NULL,
-    package_name TEXT
+    package_name TEXT,
+    device_id TEXT NOT NULL
 );
 
 CREATE INDEX logs_timestamp ON logs(timestamp);
@@ -14,10 +15,11 @@ CREATE INDEX logs_tag ON logs(tag);
 CREATE INDEX logs_priority ON logs(priority);
 CREATE INDEX logs_pid ON logs(pid);
 CREATE INDEX logs_package_name ON logs(package_name);
+CREATE INDEX logs_device_id ON logs(device_id, id);
 
 insert:
-INSERT INTO logs(timestamp, pid, tid, priority, tag, message, package_name)
-VALUES (?, ?, ?, ?, ?, ?, ?);
+INSERT INTO logs(timestamp, pid, tid, priority, tag, message, package_name, device_id)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?);
 
 selectTail:
 SELECT *
@@ -47,6 +49,9 @@ ORDER BY id ASC;
 
 countAll:
 SELECT COUNT(*) FROM logs;
+
+clearAll:
+DELETE FROM logs;
 
 lastInsertRowid:
 SELECT last_insert_rowid();
