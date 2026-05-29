@@ -6,6 +6,7 @@ import com.roideuniverse.loghound.core.DeviceId
 import com.roideuniverse.loghound.core.LogEntry
 import com.roideuniverse.loghound.core.LogRepository
 import com.roideuniverse.loghound.plugins.logcat.internal.PackageResolver
+import dev.zacsweers.metro.Inject
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -39,7 +40,7 @@ import kotlin.coroutines.coroutineContext
  * so downstream consumers (filter, UUID Grouping, sessions) can scope by
  * source.
  */
-class LogcatDataPlugin : DataPlugin {
+class LogcatDataPlugin @Inject constructor() : DataPlugin {
     override val id: String = "core.data.logcat"
     override val name: String = "ADB Logcat"
 

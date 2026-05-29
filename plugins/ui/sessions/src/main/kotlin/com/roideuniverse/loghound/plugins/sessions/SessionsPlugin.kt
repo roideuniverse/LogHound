@@ -33,6 +33,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.roideuniverse.loghound.core.UIPlugin
 import com.roideuniverse.loghound.design.LogHoundDesign
+import dev.zacsweers.metro.Inject
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -56,7 +57,7 @@ object SessionsTestTags {
  * Archive sub-tabs (open an archived session in a read-only Log Viewer) are
  * deliberately out of scope here — see issue #21's follow-up tasks.
  */
-class SessionsPlugin(
+class SessionsPlugin @Inject constructor(
     private val manager: SessionsManager,
 ) : UIPlugin {
     override val id: String = "core.sessions"

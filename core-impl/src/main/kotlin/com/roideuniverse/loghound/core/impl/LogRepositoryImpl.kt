@@ -6,6 +6,9 @@ import com.roideuniverse.loghound.core.LogFilter
 import com.roideuniverse.loghound.core.LogPage
 import com.roideuniverse.loghound.core.LogRepository
 import com.roideuniverse.loghound.database.LogDataStore
+import dev.zacsweers.metro.AppScope
+import dev.zacsweers.metro.Inject
+import dev.zacsweers.metro.SingleIn
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -13,7 +16,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 
-class LogRepositoryImpl(
+@SingleIn(AppScope::class)
+class LogRepositoryImpl @Inject constructor(
     private val dataStore: LogDataStore,
 ) : LogRepository {
 

@@ -66,8 +66,9 @@ import com.roideuniverse.loghound.core.UIPlugin
 import com.roideuniverse.loghound.design.LocalActiveDevice
 import com.roideuniverse.loghound.design.LogHoundDesign
 import com.roideuniverse.loghound.design.PriorityBadge
+import dev.zacsweers.metro.Inject
 
-class LogViewerPlugin(
+class LogViewerPlugin @Inject constructor(
     private val repository: LogRepository,
 ) : UIPlugin {
     override val id: String = "core.log-viewer"
