@@ -45,7 +45,7 @@ Multi-module Gradle project:
 - UI: Compose Multiplatform for Desktop
 - Database: SQLite
 - Build: Gradle with Kotlin DSL
-- JDK: 17+
+- JDK: 21 recommended; 23 supported when installed
 
 ## Development approach
 

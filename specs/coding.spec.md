@@ -6,7 +6,7 @@
 - Compose Multiplatform for Desktop
 - SQLite, accessed through SQLDelight (the SQLite-3.24 dialect for `ON CONFLICT … DO UPDATE` UPSERT support; the JdbcSqliteDriver from `app.cash.sqldelight:sqlite-driver`)
 - Gradle with Kotlin DSL
-- JDK 17+
+- JDK: 21 recommended; 23 supported when installed
 
 ---
 
@@ -371,7 +371,7 @@ Each block below is the exact content of the file in the working tree. Adding a 
 
 ```toml
 [versions]
-kotlin = "2.3.20"
+kotlin = "2.4.0"
 composeMultiplatform = "1.10.3"
 composeHotReload = "1.0.0"
 kotlinxCoroutines = "1.10.2"
@@ -382,6 +382,9 @@ junit = "4.13.2"
 [libraries]
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
 kotlin-testJunit = { module = "org.jetbrains.kotlin:kotlin-test-junit", version.ref = "kotlin" }
+kotlin-scriptingJvmHost = { module = "org.jetbrains.kotlin:kotlin-scripting-jvm-host", version.ref = "kotlin" }
+kotlin-scriptingJvm = { module = "org.jetbrains.kotlin:kotlin-scripting-jvm", version.ref = "kotlin" }
+kotlin-scriptingCommon = { module = "org.jetbrains.kotlin:kotlin-scripting-common", version.ref = "kotlin" }
 junit = { module = "junit:junit", version.ref = "junit" }
 kotlinx-coroutinesSwing = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-swing", version.ref = "kotlinxCoroutines" }
 kotlinx-coroutinesCore = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinxCoroutines" }
@@ -389,6 +392,11 @@ kotlinx-coroutinesTest = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-te
 sqldelight-sqliteDriver = { module = "app.cash.sqldelight:sqlite-driver", version.ref = "sqldelight" }
 sqldelight-coroutinesExtensions = { module = "app.cash.sqldelight:coroutines-extensions", version.ref = "sqldelight" }
 sqldelight-sqliteDialect324 = { module = "app.cash.sqldelight:sqlite-3-24-dialect", version.ref = "sqldelight" }
+compose-runtime = { module = "org.jetbrains.compose.runtime:runtime", version.ref = "composeMultiplatform" }
+compose-foundation = { module = "org.jetbrains.compose.foundation:foundation", version.ref = "composeMultiplatform" }
+compose-material3 = { module = "org.jetbrains.compose.material3:material3", version.ref = "composeMultiplatform" }
+compose-ui = { module = "org.jetbrains.compose.ui:ui", version.ref = "composeMultiplatform" }
+compose-uiTestJUnit4 = { module = "org.jetbrains.compose.ui:ui-test-junit4", version.ref = "composeMultiplatform" }
 
 [plugins]
 kotlinMultiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
@@ -399,6 +407,34 @@ composeHotReload = { id = "org.jetbrains.compose.hot-reload", version.ref = "com
 sqldelight = { id = "app.cash.sqldelight", version.ref = "sqldelight" }
 metro = { id = "dev.zacsweers.metro", version.ref = "metro" }
 ```
+
+### `build.gradle.kts` (root)
+
+```kotlin
+plugins {
+    alias(libs.plugins.kotlinMultiplatform) apply false
+    alias(libs.plugins.kotlinJvm) apply false
+    alias(libs.plugins.composeMultiplatform) apply false
+    alias(libs.plugins.composeCompiler) apply false
+    alias(libs.plugins.composeHotReload) apply false
+    alias(libs.plugins.sqldelight) apply false
+    alias(libs.plugins.metro) apply false
+}
+
+subprojects {
+    tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
+        compilerOptions {
+            jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_21)
+        }
+    }
+    tasks.withType<JavaCompile>().configureEach {
+        sourceCompatibility = "21"
+        targetCompatibility = "21"
+    }
+}
+```
+
+The `subprojects` block enforces a consistent JVM 21 bytecode target across every module without repeating it in each `build.gradle.kts`. The Foojay toolchain resolver (in `settings.gradle.kts`) and `gradle/daemon.jvm.properties` (`toolchainVersion=21`) ensure the Gradle daemon itself runs on JDK 21+, so the target and runtime are always aligned.
 
 ### `core-api/build.gradle.kts`
 

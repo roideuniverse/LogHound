@@ -6,7 +6,7 @@ For the full design, read the specs first: [`specs/behavior.spec.md`](specs/beha
 
 ## Prerequisites
 
-- **JDK 17+** on the `PATH` (or via your toolchain manager — the build uses `org.gradle.toolchains.foojay-resolver-convention` to pull a matching JDK if needed).
+- **JDK 21** recommended (JDK 23 also supported). Install with Homebrew: `brew install openjdk@21` then follow the `PATH` instructions printed by `brew info openjdk@21`. The build uses `org.gradle.toolchains.foojay-resolver-convention` to auto-provision a matching JDK if none is found.
 - **macOS, Linux, or Windows.** Compose Multiplatform Desktop targets all three; this README's `open` commands assume macOS.
 - **Android `adb`** (only required to ingest from a real device). The logcat data plugin looks for `adb` in `$ANDROID_HOME` / `$ANDROID_SDK_ROOT`, then `~/Library/Android/sdk/platform-tools/adb`, then your `PATH`. Without `adb`, the plugin idles silently — the rest of the app runs fine.
 - No other tooling required. SQLite is bundled via the JDBC driver; no system SQLite needed.
@@ -81,7 +81,7 @@ Produces an installable artifact under `app/build/compose/binaries/main/<format>
 java -jar app/build/compose/jars/LogHound-<os>-<arch>-1.0.0.jar
 ```
 
-A single-file executable JAR (~150–200 MB). Requires a system JDK 17+; doesn't bundle one. Lighter than an `.app` bundle if you're OK with a JDK on the target machine.
+A single-file executable JAR (~150–200 MB). Requires a system JDK 21+; doesn't bundle one. Lighter than an `.app` bundle if you're OK with a JDK on the target machine.
 
 ## Run the tests
 
