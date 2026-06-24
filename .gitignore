@@ -19,3 +19,6 @@ build/
 
 # Claude Code
 .claude/
+
+# Local machine config (JDK paths, SDK locations)
+local.properties
