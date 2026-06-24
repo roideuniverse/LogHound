@@ -6,7 +6,7 @@ For the full design, read the specs first: [`specs/behavior.spec.md`](specs/beha
 
 ## Prerequisites
 
-- **JDK 21** recommended (JDK 23 also supported). Install with Homebrew: `brew install openjdk@21` then follow the `PATH` instructions printed by `brew info openjdk@21`. The build uses `org.gradle.toolchains.foojay-resolver-convention` to auto-provision a matching JDK if none is found.
+- **JDK 21+** required. Install with Homebrew: `brew install openjdk` then follow the `PATH` instructions printed by `brew info openjdk`. The build uses `org.gradle.toolchains.foojay-resolver-convention` to auto-provision a matching JDK if none is found.
 - **macOS, Linux, or Windows.** Compose Multiplatform Desktop targets all three; this README's `open` commands assume macOS.
 - **Android `adb`** (only required to ingest from a real device). The logcat data plugin looks for `adb` in `$ANDROID_HOME` / `$ANDROID_SDK_ROOT`, then `~/Library/Android/sdk/platform-tools/adb`, then your `PATH`. Without `adb`, the plugin idles silently — the rest of the app runs fine.
 - No other tooling required. SQLite is bundled via the JDBC driver; no system SQLite needed.

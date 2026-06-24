@@ -6,7 +6,7 @@
 - Compose Multiplatform for Desktop
 - SQLite, accessed through SQLDelight (the SQLite-3.24 dialect for `ON CONFLICT … DO UPDATE` UPSERT support; the JdbcSqliteDriver from `app.cash.sqldelight:sqlite-driver`)
 - Gradle with Kotlin DSL
-- JDK: 21 recommended; 23 supported when installed
+- JDK: 21+
 
 ---
 
