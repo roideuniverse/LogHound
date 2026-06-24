@@ -375,8 +375,8 @@ kotlin = "2.3.20"
 composeMultiplatform = "1.10.3"
 composeHotReload = "1.0.0"
 kotlinxCoroutines = "1.10.2"
-androidxLifecycle = "2.10.0"
 sqldelight = "2.0.2"
+metro = "1.0.0"
 junit = "4.13.2"
 
 [libraries]
@@ -386,8 +386,6 @@ junit = { module = "junit:junit", version.ref = "junit" }
 kotlinx-coroutinesSwing = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-swing", version.ref = "kotlinxCoroutines" }
 kotlinx-coroutinesCore = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinxCoroutines" }
 kotlinx-coroutinesTest = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "kotlinxCoroutines" }
-androidx-lifecycle-viewmodelCompose = { module = "org.jetbrains.androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "androidxLifecycle" }
-androidx-lifecycle-runtimeCompose = { module = "org.jetbrains.androidx.lifecycle:lifecycle-runtime-compose", version.ref = "androidxLifecycle" }
 sqldelight-sqliteDriver = { module = "app.cash.sqldelight:sqlite-driver", version.ref = "sqldelight" }
 sqldelight-coroutinesExtensions = { module = "app.cash.sqldelight:coroutines-extensions", version.ref = "sqldelight" }
 sqldelight-sqliteDialect324 = { module = "app.cash.sqldelight:sqlite-3-24-dialect", version.ref = "sqldelight" }
@@ -399,6 +397,7 @@ composeMultiplatform = { id = "org.jetbrains.compose", version.ref = "composeMul
 composeCompiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 composeHotReload = { id = "org.jetbrains.compose.hot-reload", version.ref = "composeHotReload" }
 sqldelight = { id = "app.cash.sqldelight", version.ref = "sqldelight" }
+metro = { id = "dev.zacsweers.metro", version.ref = "metro" }
 ```
 
 ### `core-api/build.gradle.kts`
@@ -529,6 +528,7 @@ plugins {
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
     alias(libs.plugins.composeHotReload)
+    alias(libs.plugins.metro)
 }
 
 kotlin {
@@ -539,16 +539,16 @@ kotlin {
             implementation(project(":core-api"))
             implementation(project(":database"))
             implementation(project(":core-impl"))
+            implementation(project(":plugin-dsl"))
             implementation(project(":plugins:ui:log-viewer"))
             implementation(project(":plugins:ui:uuid-grouping"))
+            implementation(project(":plugins:ui:sessions"))
             implementation(project(":plugins:data:logcat"))
             implementation(compose.runtime)
             implementation(compose.foundation)
             implementation(compose.material3)
             implementation(compose.ui)
             implementation(libs.kotlinx.coroutinesCore)
-            implementation(libs.androidx.lifecycle.viewmodelCompose)
-            implementation(libs.androidx.lifecycle.runtimeCompose)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
@@ -556,6 +556,9 @@ kotlin {
         jvmMain.dependencies {
             implementation(compose.desktop.currentOs)
             implementation(libs.kotlinx.coroutinesSwing)
+            implementation(libs.kotlin.scriptingJvmHost)
+            implementation(libs.kotlin.scriptingJvm)
+            implementation(libs.kotlin.scriptingCommon)
         }
         jvmTest.dependencies {
             implementation(compose.desktop.uiTestJUnit4)

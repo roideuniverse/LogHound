@@ -5,6 +5,9 @@ import com.roideuniverse.loghound.core.LogRepository
 import com.roideuniverse.loghound.plugins.sessions.sqldelight.SelectArchived
 import com.roideuniverse.loghound.plugins.sessions.sqldelight.Sessions
 import com.roideuniverse.loghound.plugins.sessions.sqldelight.SessionsDb
+import dev.zacsweers.metro.AppScope
+import dev.zacsweers.metro.Inject
+import dev.zacsweers.metro.SingleIn
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -82,7 +85,8 @@ data class Session(
  * own clearStore() in a loop, and the sessions.db is supposed to survive
  * clears anyway.
  */
-class SessionsManager(
+@SingleIn(AppScope::class)
+class SessionsManager @Inject constructor(
     private val config: SessionsConfig,
     private val repository: LogRepository,
     private val storeClearer: StoreClearer,

@@ -66,8 +66,9 @@ import com.roideuniverse.loghound.core.UIPlugin
 import com.roideuniverse.loghound.design.LocalActiveDevice
 import com.roideuniverse.loghound.design.LogHoundDesign
 import com.roideuniverse.loghound.design.PriorityBadge
+import dev.zacsweers.metro.Inject
 
-class LogViewerPlugin(
+class LogViewerPlugin @Inject constructor(
     private val repository: LogRepository,
 ) : UIPlugin {
     override val id: String = "core.log-viewer"
@@ -103,7 +104,11 @@ class LogViewerPlugin(
             val initial = repository.query(filter = filter, limit = 500)
             entries.clear()
             entries.addAll(initial.entries)
-            if (entries.isNotEmpty()) listState.scrollToItem(entries.lastIndex)
+            // requestScrollToItem (not scrollToItem) so the jump is queued for the
+            // next layout pass instead of forcing measure/layout from inside this
+            // effect — the latter throws "performMeasureAndLayout called during
+            // measure layout" when the list hasn't been laid out yet.
+            if (entries.isNotEmpty()) listState.requestScrollToItem(entries.lastIndex)
         }
 
         LaunchedEffect(filter) {
@@ -123,7 +128,7 @@ class LogViewerPlugin(
                     while (entries.size > MAX_IN_MEMORY) {
                         entries.removeAt(0)
                     }
-                    if (entries.isNotEmpty()) listState.scrollToItem(entries.lastIndex)
+                    if (entries.isNotEmpty()) listState.requestScrollToItem(entries.lastIndex)
                 }
                 // While the user is scrolled up reading history we deliberately don't
                 // evict — they keep their context. The list returns to the cap on the
