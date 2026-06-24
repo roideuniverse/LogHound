@@ -7,3 +7,15 @@ plugins {
     alias(libs.plugins.sqldelight) apply false
     alias(libs.plugins.metro) apply false
 }
+
+subprojects {
+    tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
+        compilerOptions {
+            jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_23)
+        }
+    }
+    tasks.withType<JavaCompile>().configureEach {
+        sourceCompatibility = "23"
+        targetCompatibility = "23"
+    }
+}
