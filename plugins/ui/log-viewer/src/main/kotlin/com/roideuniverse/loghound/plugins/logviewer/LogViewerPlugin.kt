@@ -64,6 +64,7 @@ import com.roideuniverse.loghound.core.LogFilter
 import com.roideuniverse.loghound.core.LogRepository
 import com.roideuniverse.loghound.core.UIPlugin
 import com.roideuniverse.loghound.design.LocalActiveDevice
+import com.roideuniverse.loghound.design.LocalLogHoundColors
 import com.roideuniverse.loghound.design.LogHoundDesign
 import com.roideuniverse.loghound.design.PriorityBadge
 import dev.zacsweers.metro.Inject
@@ -176,11 +177,12 @@ class LogViewerPlugin @Inject constructor(
             }
         }
 
+        val colors = LocalLogHoundColors.current
         Column(modifier = modifier.fillMaxSize()) {
             PackageUidLookupBar()
-            HorizontalDivider(color = LogHoundDesign.Colors.Border)
+            HorizontalDivider(color = colors.border)
             FilterBar(query = queryText, onQueryChange = { queryText = it })
-            HorizontalDivider(color = LogHoundDesign.Colors.Border)
+            HorizontalDivider(color = colors.border)
             Box(modifier = Modifier.fillMaxSize()) {
                 SelectionContainer(modifier = Modifier.fillMaxSize()) {
                     LazyColumn(
@@ -215,8 +217,8 @@ class LogViewerPlugin @Inject constructor(
                             }
                         },
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFF424242),
-                            contentColor = Color.White,
+                            containerColor = colors.button,
+                            contentColor = colors.buttonText,
                         ),
                         modifier = Modifier
                             .align(Alignment.BottomEnd)
@@ -237,6 +239,7 @@ private const val MAX_IN_MEMORY = 10_000
 
 @Composable
 private fun LoadingOlderRow() {
+    val colors = LocalLogHoundColors.current
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -247,17 +250,18 @@ private fun LoadingOlderRow() {
     ) {
         CircularProgressIndicator(strokeWidth = 2.dp, modifier = Modifier.width(14.dp))
         Spacer(Modifier.width(8.dp))
-        Text("Loading older…", style = LogHoundDesign.Text.Status)
+        Text("Loading older…", style = LogHoundDesign.Text.Status.copy(color = colors.secondary))
     }
 }
 
 @Composable
 private fun LogRowWithExpansion(entry: LogEntry, expanded: Boolean, onToggle: () -> Unit) {
+    val colors = LocalLogHoundColors.current
     val interactionSource = remember { MutableInteractionSource() }
     val isHovered by interactionSource.collectIsHoveredAsState()
     val rowBg = when {
-        expanded || isHovered -> LogHoundDesign.Colors.HoverBackground
-        else -> LogHoundDesign.Colors.Background
+        expanded || isHovered -> colors.hoverBackground
+        else -> colors.background
     }
     Column(
         modifier = Modifier
@@ -279,17 +283,18 @@ private fun LogRowWithExpansion(entry: LogEntry, expanded: Boolean, onToggle: ()
 
 @Composable
 private fun ExpandedDetail(entry: LogEntry) {
-    Surface(modifier = Modifier.fillMaxWidth(), color = LogHoundDesign.Colors.Surface) {
+    val colors = LocalLogHoundColors.current
+    Surface(modifier = Modifier.fillMaxWidth(), color = colors.surface) {
         Column(modifier = Modifier.padding(start = 32.dp, end = 12.dp, top = 4.dp, bottom = 8.dp)) {
             Text(
                 "${entry.timestamp} · ${entry.tag} · pid ${entry.pid} · tid ${entry.tid}",
-                style = LogHoundDesign.Text.Status,
+                style = LogHoundDesign.Text.Status.copy(color = colors.secondary),
                 modifier = Modifier.testTag(TestTags.LOG_ROW_DETAIL_META),
             )
             Spacer(Modifier.height(4.dp))
             Text(
                 entry.message,
-                style = LogHoundDesign.Text.Row,
+                style = LogHoundDesign.Text.Row.copy(color = colors.onSurface),
                 modifier = Modifier.testTag(TestTags.LOG_ROW_DETAIL_MESSAGE),
             )
         }
@@ -298,12 +303,10 @@ private fun ExpandedDetail(entry: LogEntry) {
 
 @Composable
 private fun LogRow(entry: LogEntry) {
-    val bodyStyle = LogHoundDesign.Text.Row
-    val metaStyle = LogHoundDesign.Text.Row.copy(
-        fontSize = 11.sp,
-        color = LogHoundDesign.Colors.Secondary,
-    )
-    val tagStyle = LogHoundDesign.Text.Row.copy(fontWeight = FontWeight.Medium)
+    val colors = LocalLogHoundColors.current
+    val bodyStyle = LogHoundDesign.Text.Row.copy(color = colors.onSurface)
+    val metaStyle = LogHoundDesign.Text.Row.copy(fontSize = 11.sp, color = colors.secondary)
+    val tagStyle = LogHoundDesign.Text.Row.copy(fontWeight = FontWeight.Medium, color = colors.onSurface)
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -331,13 +334,14 @@ private fun LogRow(entry: LogEntry) {
 
 @Composable
 private fun FilterBar(query: String, onQueryChange: (String) -> Unit) {
-    Surface(modifier = Modifier.fillMaxWidth(), color = LogHoundDesign.Colors.Surface) {
+    val colors = LocalLogHoundColors.current
+    Surface(modifier = Modifier.fillMaxWidth(), color = colors.surface) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             val shape = RoundedCornerShape(4.dp)
-            val style: TextStyle = LocalTextStyle.current.merge(LogHoundDesign.Text.Field)
+            val style: TextStyle = LocalTextStyle.current.merge(LogHoundDesign.Text.Field.copy(color = colors.onSurface))
             BasicTextField(
                 value = query,
                 onValueChange = onQueryChange,
@@ -346,8 +350,8 @@ private fun FilterBar(query: String, onQueryChange: (String) -> Unit) {
                 modifier = Modifier
                     .weight(1f)
                     .clip(shape)
-                    .background(LogHoundDesign.Colors.TextFieldBackground)
-                    .border(1.dp, LogHoundDesign.Colors.TextFieldBorder, shape)
+                    .background(colors.input)
+                    .border(1.dp, colors.border, shape)
                     .padding(horizontal = 8.dp, vertical = 6.dp)
                     .testTag(TestTags.FILTER_INPUT),
                 decorationBox = { inner ->
@@ -355,7 +359,7 @@ private fun FilterBar(query: String, onQueryChange: (String) -> Unit) {
                         if (query.isEmpty()) {
                             Text(
                                 "tag:Activity level:W package:mine",
-                                color = LogHoundDesign.Colors.Placeholder,
+                                color = colors.secondary,
                                 style = style,
                             )
                         }
@@ -411,6 +415,7 @@ private fun FilterBuilderPanel(
     onApply: (key: String, value: String) -> Unit,
     onDismiss: () -> Unit,
 ) {
+    val colors = LocalLogHoundColors.current
     var selectedKey by remember { mutableStateOf(FILTER_CLAUSE_KEYS.first()) }
     var keyMenuOpen by remember { mutableStateOf(false) }
     var value by remember { mutableStateOf("") }
@@ -419,21 +424,21 @@ private fun FilterBuilderPanel(
     Surface(
         modifier = Modifier
             .clip(shape)
-            .border(1.dp, LogHoundDesign.Colors.Border, shape)
+            .border(1.dp, colors.border, shape)
             .testTag(TestTags.FILTER_BUILDER_PANEL),
-        color = LogHoundDesign.Colors.Background,
+        color = colors.elevated,
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
             Text(
                 "Add filter clause",
-                style = LogHoundDesign.Text.Tab.copy(fontWeight = FontWeight.SemiBold),
+                style = LogHoundDesign.Text.Tab.copy(fontWeight = FontWeight.SemiBold, color = colors.onSurface),
             )
             Spacer(Modifier.height(8.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box {
                     TextButton(onClick = { keyMenuOpen = true }) {
-                        Text(selectedKey, style = LogHoundDesign.Text.Button)
-                        Text(" ▾", style = LogHoundDesign.Text.Status)
+                        Text(selectedKey, style = LogHoundDesign.Text.Button.copy(color = colors.onSurface))
+                        Text(" ▾", style = LogHoundDesign.Text.Status.copy(color = colors.secondary))
                     }
                     DropdownMenu(
                         expanded = keyMenuOpen,
@@ -441,7 +446,7 @@ private fun FilterBuilderPanel(
                     ) {
                         for (key in FILTER_CLAUSE_KEYS) {
                             DropdownMenuItem(
-                                text = { Text(key, style = LogHoundDesign.Text.Tab) },
+                                text = { Text(key, style = LogHoundDesign.Text.Tab.copy(color = colors.onSurface)) },
                                 onClick = {
                                     selectedKey = key
                                     keyMenuOpen = false
@@ -456,12 +461,12 @@ private fun FilterBuilderPanel(
                     value = value,
                     onValueChange = { value = it },
                     singleLine = true,
-                    textStyle = LogHoundDesign.Text.Field,
+                    textStyle = LogHoundDesign.Text.Field.copy(color = colors.onSurface),
                     modifier = Modifier
                         .width(180.dp)
                         .clip(fieldShape)
-                        .background(LogHoundDesign.Colors.TextFieldBackground)
-                        .border(1.dp, LogHoundDesign.Colors.TextFieldBorder, fieldShape)
+                        .background(colors.input)
+                        .border(1.dp, colors.border, fieldShape)
                         .padding(horizontal = 8.dp, vertical = 6.dp)
                         .testTag(TestTags.FILTER_BUILDER_VALUE),
                     decorationBox = { inner ->
@@ -469,8 +474,8 @@ private fun FilterBuilderPanel(
                             if (value.isEmpty()) {
                                 Text(
                                     placeholderFor(selectedKey),
-                                    color = LogHoundDesign.Colors.Placeholder,
-                                    style = LogHoundDesign.Text.Field,
+                                    color = colors.secondary,
+                                    style = LogHoundDesign.Text.Field.copy(color = colors.onSurface),
                                 )
                             }
                             inner()
@@ -481,7 +486,7 @@ private fun FilterBuilderPanel(
             Spacer(Modifier.height(12.dp))
             Row(horizontalArrangement = Arrangement.End, modifier = Modifier.fillMaxWidth()) {
                 TextButton(onClick = onDismiss) {
-                    Text("Cancel", style = LogHoundDesign.Text.Button)
+                    Text("Cancel", style = LogHoundDesign.Text.Button.copy(color = colors.secondary))
                 }
                 Spacer(Modifier.width(4.dp))
                 TextButton(
@@ -489,7 +494,7 @@ private fun FilterBuilderPanel(
                     modifier = Modifier.testTag(TestTags.FILTER_BUILDER_APPLY),
                     enabled = value.isNotBlank(),
                 ) {
-                    Text("Add", style = LogHoundDesign.Text.Button.copy(color = LogHoundDesign.Colors.Primary))
+                    Text("Add", style = LogHoundDesign.Text.Button.copy(color = colors.primary))
                 }
             }
         }
