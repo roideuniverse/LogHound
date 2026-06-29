@@ -7,6 +7,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -18,6 +19,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollbarAdapter
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.selection.SelectionContainer
@@ -78,12 +80,9 @@ class LogViewerPlugin @Inject constructor(
     @Composable
     override fun content(modifier: Modifier) {
         var queryText by remember { mutableStateOf("") }
+        var tagFilters by remember { mutableStateOf<List<TagFilter>>(emptyList()) }
         val activeDevice = LocalActiveDevice.current
         val parsedFilter: LogFilter = remember(queryText) { FilterQueryParser.parse(queryText) }
-        // The status-bar pill scopes every query by default; an explicit
-        // `device:` clause in the filter bar overrides the pill so the user
-        // can still inspect another device's stream without changing the
-        // app-wide active scope.
         val filter: LogFilter = remember(parsedFilter, activeDevice) {
             if (parsedFilter.deviceId != null) parsedFilter
             else parsedFilter.copy(deviceId = activeDevice?.value)
@@ -92,73 +91,60 @@ class LogViewerPlugin @Inject constructor(
         val listState = rememberLazyListState()
         var loadingOlder by remember { mutableStateOf(false) }
         var olderExhausted by remember { mutableStateOf(false) }
-        // Tracks which row (if any) is currently expanded to show its full detail.
-        // Survives recomposition; lost on filter change (we want a fresh start on
-        // a new scope) which happens naturally since this remember is unkeyed and
-        // we never reset it explicitly elsewhere.
         var expandedEntryId by remember { mutableStateOf<Long?>(null) }
 
-        LaunchedEffect(filter) {
-            // Reset load-older state on filter change so the trigger can fire afresh
-            // against the new filter scope.
+        // Top tags from visible entries, recomputed when entries changes.
+        val availableTags by remember {
+            derivedStateOf {
+                entries.groupingBy { it.tag }.eachCount()
+                    .entries.sortedByDescending { it.value }
+                    .map { it.key to it.value }
+                    .take(50)
+            }
+        }
+
+        LaunchedEffect(filter, tagFilters) {
             olderExhausted = false
             val initial = repository.query(filter = filter, limit = 500)
             entries.clear()
-            entries.addAll(initial.entries)
-            // requestScrollToItem (not scrollToItem) so the jump is queued for the
-            // next layout pass instead of forcing measure/layout from inside this
-            // effect — the latter throws "performMeasureAndLayout called during
-            // measure layout" when the list hasn't been laid out yet.
+            entries.addAll(initial.entries.applyTagFilters(tagFilters))
             if (entries.isNotEmpty()) listState.requestScrollToItem(entries.lastIndex)
         }
 
-        LaunchedEffect(filter) {
+        LaunchedEffect(filter, tagFilters) {
             repository.ingested.collect { batch ->
-                val matched = batch.filter(filter::matches)
+                val matched = batch.filter(filter::matches).applyTagFilters(tagFilters)
                 if (matched.isEmpty()) return@collect
                 val wasAtBottom = listState.run {
-                    val info = layoutInfo
-                    val last = info.visibleItemsInfo.lastOrNull()?.index ?: -1
+                    val last = layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1
                     last >= entries.lastIndex - 2
                 }
                 entries.addAll(matched)
                 if (wasAtBottom) {
-                    // Tail-following: trim from the front to keep memory bounded. The
-                    // evicted rows are still on disk; load-older fetches them back if
-                    // the user scrolls up later.
-                    while (entries.size > MAX_IN_MEMORY) {
-                        entries.removeAt(0)
-                    }
+                    while (entries.size > MAX_IN_MEMORY) entries.removeAt(0)
                     if (entries.isNotEmpty()) listState.requestScrollToItem(entries.lastIndex)
                 }
-                // While the user is scrolled up reading history we deliberately don't
-                // evict — they keep their context. The list returns to the cap on the
-                // next at-bottom append.
             }
         }
 
-        // Load-older-on-scroll trigger.
-        LaunchedEffect(filter) {
+        LaunchedEffect(filter, tagFilters) {
             snapshotFlow { listState.firstVisibleItemIndex }
                 .distinctUntilChanged()
                 .collect { firstVisible ->
                     if (firstVisible <= LOAD_OLDER_THRESHOLD &&
-                        !loadingOlder &&
-                        !olderExhausted &&
-                        entries.isNotEmpty()
+                        !loadingOlder && !olderExhausted && entries.isNotEmpty()
                     ) {
                         loadingOlder = true
                         try {
-                            val oldestId = entries.first().id
                             val older = repository.query(
                                 filter = filter,
-                                beforeId = oldestId,
+                                beforeId = entries.first().id,
                                 limit = LOAD_OLDER_PAGE_SIZE,
                             )
                             if (older.entries.isEmpty()) {
                                 olderExhausted = true
                             } else {
-                                entries.addAll(0, older.entries)
+                                entries.addAll(0, older.entries.applyTagFilters(tagFilters))
                             }
                         } finally {
                             loadingOlder = false
@@ -168,7 +154,6 @@ class LogViewerPlugin @Inject constructor(
         }
 
         val coroutineScope = rememberCoroutineScope()
-        // True when the user is within a couple rows of the tail (or the list is empty).
         val isAtBottom by remember {
             derivedStateOf {
                 if (entries.isEmpty()) return@derivedStateOf true
@@ -181,7 +166,24 @@ class LogViewerPlugin @Inject constructor(
         Column(modifier = modifier.fillMaxSize()) {
             PackageUidLookupBar()
             HorizontalDivider(color = colors.border)
-            FilterBar(query = queryText, onQueryChange = { queryText = it })
+            FilterBar(
+                query = queryText,
+                onQueryChange = { queryText = it },
+                tagFilters = tagFilters,
+                onAddTag = { tag ->
+                    if (tagFilters.none { it.tag == tag }) {
+                        tagFilters = tagFilters + TagFilter(tag)
+                    }
+                },
+                onToggleTag = { tag ->
+                    tagFilters = tagFilters.map {
+                        if (it.tag == tag) it.copy(mode = if (it.mode == TagMode.Include) TagMode.Exclude else TagMode.Include)
+                        else it
+                    }
+                },
+                onRemoveTag = { tag -> tagFilters = tagFilters.filter { it.tag != tag } },
+                availableTags = availableTags,
+            )
             HorizontalDivider(color = colors.border)
             Box(modifier = Modifier.fillMaxSize()) {
                 SelectionContainer(modifier = Modifier.fillMaxSize()) {
@@ -333,47 +335,254 @@ private fun LogRow(entry: LogEntry) {
 }
 
 @Composable
-private fun FilterBar(query: String, onQueryChange: (String) -> Unit) {
+private fun FilterBar(
+    query: String,
+    onQueryChange: (String) -> Unit,
+    tagFilters: List<TagFilter>,
+    onAddTag: (String) -> Unit,
+    onToggleTag: (String) -> Unit,
+    onRemoveTag: (String) -> Unit,
+    availableTags: List<Pair<String, Int>>,
+) {
     val colors = LocalLogHoundColors.current
+
+    // Detect `tag:xxx` suffix in query → show autocomplete.
+    val tagFragment = remember(query) {
+        val last = query.trimEnd().split(" ").last()
+        if (last.startsWith("tag:", ignoreCase = true)) last.drop(4) else null
+    }
+    val acSuggestions = remember(tagFragment, availableTags) {
+        if (tagFragment == null) emptyList()
+        else availableTags.filter { (tag, _) ->
+            tagFragment.isEmpty() || tag.contains(tagFragment, ignoreCase = true)
+        }
+    }
+
+    fun pickTag(tag: String) {
+        val stripped = query.replace(Regex("""(\s|^)tag:\S*$""", RegexOption.IGNORE_CASE), "").trimEnd()
+        onQueryChange(stripped)
+        onAddTag(tag)
+    }
+
+    var tagsMenuOpen by remember { mutableStateOf(false) }
+
     Surface(modifier = Modifier.fillMaxWidth(), color = colors.surface) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            val shape = RoundedCornerShape(4.dp)
-            val style: TextStyle = LocalTextStyle.current.merge(LogHoundDesign.Text.Field.copy(color = colors.onSurface))
-            BasicTextField(
-                value = query,
-                onValueChange = onQueryChange,
-                singleLine = true,
-                textStyle = style,
-                modifier = Modifier
-                    .weight(1f)
-                    .clip(shape)
-                    .background(colors.input)
-                    .border(1.dp, colors.border, shape)
-                    .padding(horizontal = 8.dp, vertical = 6.dp)
-                    .testTag(TestTags.FILTER_INPUT),
-                decorationBox = { inner ->
-                    Box {
-                        if (query.isEmpty()) {
-                            Text(
-                                "tag:Activity level:W package:mine",
-                                color = colors.secondary,
-                                style = style,
+        Column {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                val shape = RoundedCornerShape(4.dp)
+                val style: TextStyle = LocalTextStyle.current.merge(LogHoundDesign.Text.Field.copy(color = colors.onSurface))
+                // Search field with chips
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(shape)
+                        .background(colors.input)
+                        .border(1.dp, colors.border, shape),
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 6.dp, vertical = 4.dp)
+                            .horizontalScroll(rememberScrollState()),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        tagFilters.forEach { chip ->
+                            FilterChip(
+                                chip = chip,
+                                onToggle = { onToggleTag(chip.tag) },
+                                onRemove = { onRemoveTag(chip.tag) },
                             )
+                            Spacer(Modifier.width(4.dp))
                         }
-                        inner()
+                        BasicTextField(
+                            value = query,
+                            onValueChange = onQueryChange,
+                            singleLine = true,
+                            textStyle = style,
+                            modifier = Modifier
+                                .weight(1f)
+                                .padding(horizontal = 2.dp, vertical = 2.dp)
+                                .testTag(TestTags.FILTER_INPUT),
+                            decorationBox = { inner ->
+                                Box {
+                                    if (query.isEmpty() && tagFilters.isEmpty()) {
+                                        Text(
+                                            "tag:Activity level:W package:mine",
+                                            color = colors.secondary,
+                                            style = style,
+                                        )
+                                    }
+                                    inner()
+                                }
+                            },
+                        )
                     }
-                },
+                }
+                Spacer(Modifier.width(6.dp))
+                // Tags facet button
+                Box {
+                    TagsButton(
+                        activeCount = tagFilters.size,
+                        onClick = { tagsMenuOpen = true },
+                    )
+                    DropdownMenu(
+                        expanded = tagsMenuOpen,
+                        onDismissRequest = { tagsMenuOpen = false },
+                    ) {
+                        if (availableTags.isEmpty()) {
+                            DropdownMenuItem(
+                                text = { Text("No tags in view", style = LogHoundDesign.Text.Status.copy(color = colors.secondary)) },
+                                onClick = { tagsMenuOpen = false },
+                                enabled = false,
+                            )
+                        } else {
+                            availableTags.take(20).forEach { (tag, count) ->
+                                val active = tagFilters.any { it.tag == tag }
+                                DropdownMenuItem(
+                                    text = {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Text(
+                                                tag,
+                                                style = LogHoundDesign.Text.Tab.copy(
+                                                    color = if (active) colors.primary else colors.onSurface,
+                                                    fontWeight = if (active) FontWeight.SemiBold else FontWeight.Normal,
+                                                ),
+                                                modifier = Modifier.weight(1f),
+                                            )
+                                            Spacer(Modifier.width(12.dp))
+                                            Text(
+                                                count.toString(),
+                                                style = LogHoundDesign.Text.Status.copy(color = colors.secondary),
+                                            )
+                                        }
+                                    },
+                                    onClick = {
+                                        if (active) onRemoveTag(tag) else onAddTag(tag)
+                                        tagsMenuOpen = false
+                                    },
+                                )
+                            }
+                        }
+                    }
+                }
+                Spacer(Modifier.width(4.dp))
+                FilterBuilderButton(
+                    onAppend = { clause ->
+                        val sep = if (query.isBlank()) "" else " "
+                        onQueryChange("$query$sep$clause")
+                    },
+                )
+            }
+            // Tag autocomplete dropdown
+            if (acSuggestions.isNotEmpty()) {
+                TagAutocomplete(
+                    suggestions = acSuggestions,
+                    onPick = { pickTag(it) },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun FilterChip(chip: TagFilter, onToggle: () -> Unit, onRemove: () -> Unit) {
+    val colors = LocalLogHoundColors.current
+    val isExclude = chip.mode == TagMode.Exclude
+    val bgColor = if (isExclude) colors.priorityBgError else colors.accentTint
+    val fgColor = if (isExclude) colors.priorityError else colors.primary
+    Row(
+        modifier = Modifier
+            .clip(RoundedCornerShape(3.dp))
+            .background(bgColor)
+            .clickable(onClick = onToggle)
+            .padding(start = 6.dp, end = 2.dp, top = 2.dp, bottom = 2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            if (isExclude) "−${chip.tag}" else chip.tag,
+            style = LogHoundDesign.Text.Status.copy(color = fgColor, fontWeight = FontWeight.Medium),
+        )
+        Spacer(Modifier.width(2.dp))
+        Text(
+            "✕",
+            style = LogHoundDesign.Text.Status.copy(color = fgColor),
+            modifier = Modifier
+                .clip(RoundedCornerShape(2.dp))
+                .clickable(onClick = onRemove)
+                .padding(horizontal = 3.dp),
+        )
+    }
+}
+
+@Composable
+private fun TagsButton(activeCount: Int, onClick: () -> Unit) {
+    val colors = LocalLogHoundColors.current
+    val active = activeCount > 0
+    Row(
+        modifier = Modifier
+            .clip(RoundedCornerShape(4.dp))
+            .background(if (active) colors.accentTint else colors.input)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 8.dp, vertical = 5.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Text(
+            "Tags",
+            style = LogHoundDesign.Text.Status.copy(
+                color = if (active) colors.primary else colors.secondary,
+                fontWeight = if (active) FontWeight.SemiBold else FontWeight.Medium,
+            ),
+        )
+        if (activeCount > 0) {
+            Text(
+                activeCount.toString(),
+                style = LogHoundDesign.Text.Status.copy(color = colors.primary, fontWeight = FontWeight.SemiBold),
             )
-            Spacer(Modifier.width(8.dp))
-            FilterBuilderButton(
-                onAppend = { clause ->
-                    val sep = if (query.isBlank()) "" else " "
-                    onQueryChange("$query$sep$clause")
-                },
-            )
+        }
+    }
+}
+
+@Composable
+private fun TagAutocomplete(suggestions: List<Pair<String, Int>>, onPick: (String) -> Unit) {
+    val colors = LocalLogHoundColors.current
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(colors.elevated)
+            .border(1.dp, colors.border),
+    ) {
+        Text(
+            "TAGS IN VIEW · tap to filter",
+            style = LogHoundDesign.Text.Status.copy(
+                color = colors.secondary,
+                fontWeight = FontWeight.SemiBold,
+            ),
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+        )
+        HorizontalDivider(color = colors.borderSoft)
+        suggestions.take(8).forEach { (tag, count) ->
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onPick(tag) }
+                    .padding(horizontal = 12.dp, vertical = 7.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    tag,
+                    style = LogHoundDesign.Text.Row.copy(color = colors.onSurface),
+                    modifier = Modifier.weight(1f),
+                )
+                Text(
+                    count.toString(),
+                    style = LogHoundDesign.Text.Status.copy(color = colors.secondary),
+                )
+            }
+            HorizontalDivider(color = colors.rowDivider)
         }
     }
 }
@@ -509,4 +718,18 @@ private fun placeholderFor(key: String): String = when (key) {
     "package" -> "com.app.debug"
     "device" -> "Pixel 8"
     else -> ""
+}
+
+enum class TagMode { Include, Exclude }
+
+data class TagFilter(val tag: String, val mode: TagMode = TagMode.Include)
+
+private fun List<LogEntry>.applyTagFilters(filters: List<TagFilter>): List<LogEntry> {
+    if (filters.isEmpty()) return this
+    val includes = filters.filter { it.mode == TagMode.Include }.map { it.tag }
+    val excludes = filters.filter { it.mode == TagMode.Exclude }.map { it.tag }
+    return filter { entry ->
+        (includes.isEmpty() || entry.tag in includes) &&
+        (excludes.isEmpty() || entry.tag !in excludes)
+    }
 }
