@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -26,17 +27,18 @@ import com.roideuniverse.loghound.core.LogPriority
  */
 @Composable
 fun PriorityBadge(priority: LogPriority, modifier: Modifier = Modifier) {
+    val colors = LocalLogHoundColors.current
     Box(
         modifier = modifier
             .size(16.dp)
             .clip(RoundedCornerShape(6.dp))
-            .background(LogHoundDesign.badgeBgFor(priority)),
+            .background(colors.badgeBgFor(priority)),
         contentAlignment = Alignment.Center,
     ) {
         BasicText(
             text = priority.label.toString(),
             style = LogHoundDesign.Text.Row.copy(
-                color = LogHoundDesign.colorFor(priority),
+                color = colors.colorFor(priority),
                 fontSize = 10.sp,
                 fontWeight = FontWeight.Medium,
                 lineHeight = 10.sp,
