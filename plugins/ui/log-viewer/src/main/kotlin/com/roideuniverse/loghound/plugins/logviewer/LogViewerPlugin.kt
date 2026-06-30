@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -62,6 +63,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.Canvas
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.withStyle
@@ -347,20 +352,17 @@ private fun LogRow(entry: LogEntry, display: DisplaySettings, searchText: String
             .testTag(TestTags.LOG_ROW),
         verticalAlignment = Alignment.Top,
     ) {
-        PriorityBadge(entry.priority, modifier = Modifier.padding(top = 1.dp))
-        Spacer(Modifier.width(8.dp))
-        Text(timestamp, style = metaStyle, modifier = Modifier.padding(top = 1.dp))
+        PriorityBadge(entry.priority, modifier = Modifier.padding(top = 1.dp, end = 10.dp))
+        Text(timestamp, style = metaStyle, modifier = Modifier.width(84.dp).padding(top = 1.dp))
         if (display.showPid) {
-            Spacer(Modifier.width(8.dp))
-            Text("${entry.pid} ${entry.tid}", style = metaStyle, modifier = Modifier.padding(top = 1.dp))
+            Text("${entry.pid} ${entry.tid}", style = metaStyle, modifier = Modifier.width(88.dp).padding(top = 1.dp))
         }
-        Spacer(Modifier.width(12.dp))
         Text(
             entry.tag,
             style = tagStyle,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.width(120.dp),
+            modifier = Modifier.width(128.dp),
         )
         Spacer(Modifier.width(8.dp))
         HighlightedText(
@@ -370,6 +372,19 @@ private fun LogRow(entry: LogEntry, display: DisplaySettings, searchText: String
             softWrap = display.wordWrap,
             modifier = Modifier.weight(1f),
         )
+    }
+}
+
+@Composable
+private fun SearchIcon() {
+    val colors = LocalLogHoundColors.current
+    Canvas(modifier = Modifier.size(13.dp)) {
+        val r = size.width * 0.36f
+        val cx = size.width * 0.42f
+        val cy = size.height * 0.42f
+        drawCircle(color = colors.secondary, radius = r, center = Offset(cx, cy), style = Stroke(width = 1.5.dp.toPx()))
+        val lx = cx + r * 0.72f; val ly = cy + r * 0.72f
+        drawLine(color = colors.secondary, start = Offset(lx, ly), end = Offset(size.width * 0.9f, size.height * 0.9f), strokeWidth = 1.5.dp.toPx(), cap = StrokeCap.Round)
     }
 }
 
@@ -435,29 +450,32 @@ private fun FilterBar(
 
     var tagsMenuOpen by remember { mutableStateOf(false) }
 
-    Surface(modifier = Modifier.fillMaxWidth(), color = colors.surface) {
+    Surface(modifier = Modifier.fillMaxWidth().height(48.dp), color = colors.surface) {
         Column {
             Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp),
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
                 verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
             ) {
-                val shape = RoundedCornerShape(4.dp)
+                val shape = RoundedCornerShape(6.dp)
                 val style: TextStyle = LocalTextStyle.current.merge(LogHoundDesign.Text.Field.copy(color = colors.onSurface))
-                // Search field with chips
+                // Search field with chips + search icon
                 Box(
                     modifier = Modifier
                         .weight(1f)
+                        .height(32.dp)
                         .clip(shape)
-                        .background(colors.input)
-                        .border(1.dp, colors.border, shape),
+                        .background(colors.input),
                 ) {
                     Row(
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 6.dp, vertical = 4.dp)
+                            .fillMaxSize()
+                            .padding(start = 11.dp, end = 8.dp)
                             .horizontalScroll(rememberScrollState()),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
+                        SearchIcon()
+                        Spacer(Modifier.width(6.dp))
                         tagFilters.forEach { chip ->
                             FilterChip(
                                 chip = chip,

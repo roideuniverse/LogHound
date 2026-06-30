@@ -1,5 +1,11 @@
 package com.roideuniverse.loghound
 
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -20,15 +26,17 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.roideuniverse.loghound.core.Device
 import com.roideuniverse.loghound.core.DeviceId
@@ -64,25 +72,48 @@ fun StatusBar(
     modifier: Modifier = Modifier,
 ) {
     val colors = LocalLogHoundColors.current
+    val pulse = rememberInfiniteTransition()
+    val pulseAlpha by pulse.animateFloat(
+        initialValue = 1f,
+        targetValue = 0.25f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(900, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse,
+        ),
+    )
     Surface(
         modifier = modifier.fillMaxWidth().height(28.dp),
         color = colors.surface,
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Start,
         ) {
-            DevicePill(
-                devices = devices,
-                activeDevice = activeDevice,
-                onSelectDevice = onSelectDevice,
-            )
+            DevicePill(devices = devices, activeDevice = activeDevice, onSelectDevice = onSelectDevice)
             Spacer(Modifier.width(8.dp))
-            SessionPill(
-                session = activeSession,
-                onEndAndStartNew = onEndAndStartNewSession,
-            )
+            SessionPill(session = activeSession, onEndAndStartNew = onEndAndStartNewSession)
+            Spacer(Modifier.weight(1f))
+            // Streaming indicator (right side)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(7.dp),
+            ) {
+                Text(
+                    "${devices.size} device${if (devices.size == 1) "" else "s"}",
+                    style = LogHoundDesign.Text.Status.copy(color = colors.secondary),
+                )
+                Box(
+                    modifier = Modifier
+                        .size(6.dp)
+                        .clip(CircleShape)
+                        .alpha(pulseAlpha)
+                        .background(colors.pulse),
+                )
+                Text(
+                    "Streaming…",
+                    style = LogHoundDesign.Text.Status.copy(color = colors.secondary, fontWeight = FontWeight.Medium),
+                )
+            }
         }
     }
 }
@@ -106,29 +137,29 @@ private fun DevicePill(
             colors.devicePalette[deviceColors.size % colors.devicePalette.size]
         }
     }
-    val activeColor = activeDevice?.let { deviceColors[it.value] }
     val label = pillLabel(orderedDevices, activeDevice)
+    val dotColors: List<Color> = when {
+        activeDevice == null -> orderedDevices.map { deviceColors[it.id.value] ?: colors.secondary }
+        else -> listOf(deviceColors[activeDevice.value] ?: colors.secondary)
+    }
 
     Box {
         Row(
             modifier = Modifier
-                .clip(RoundedCornerShape(4.dp))
-                .background(colors.pressedBackground)
+                .height(20.dp)
+                .clip(RoundedCornerShape(5.dp))
+                .background(colors.input)
                 .clickable { menuOpen = true }
-                .padding(horizontal = 8.dp, vertical = 4.dp)
+                .padding(horizontal = 9.dp)
                 .testTag(StatusBarTestTags.DEVICE_PILL),
             verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
         ) {
-            Box(
-                modifier = Modifier
-                    .size(8.dp)
-                    .clip(CircleShape)
-                    .background(activeColor ?: colors.secondary),
-            )
-            Spacer(Modifier.width(6.dp))
-            Text(label, style = LogHoundDesign.Text.Status.copy(color = colors.onSurface))
-            Spacer(Modifier.width(4.dp))
-            Text("▾", style = LogHoundDesign.Text.Status.copy(color = colors.secondary))
+            dotColors.forEach { dotColor ->
+                Box(modifier = Modifier.size(7.dp).clip(CircleShape).background(dotColor))
+            }
+            Text(label, style = LogHoundDesign.Text.Status.copy(color = colors.onSurface, fontWeight = FontWeight.Medium))
+            Text("▾", style = LogHoundDesign.Text.Status.copy(color = colors.secondary, fontSize = 9.sp))
         }
         DropdownMenu(
             expanded = menuOpen,
@@ -205,26 +236,26 @@ private fun SessionPill(
     onEndAndStartNew: () -> Unit,
 ) {
     var menuOpen by remember { mutableStateOf(false) }
+    val colors = LocalLogHoundColors.current
     Box {
-        val colors = LocalLogHoundColors.current
         Row(
             modifier = Modifier
-                .clip(RoundedCornerShape(4.dp))
-                .background(colors.pressedBackground)
+                .height(20.dp)
+                .clip(RoundedCornerShape(5.dp))
+                .background(colors.input)
                 .clickable(enabled = session != null) { menuOpen = true }
-                .padding(horizontal = 8.dp, vertical = 4.dp)
+                .padding(horizontal = 9.dp)
                 .testTag(StatusBarTestTags.SESSION_PILL),
             verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
         ) {
-            Text("⏱", style = LogHoundDesign.Text.Status.copy(color = colors.secondary))
-            Spacer(Modifier.width(6.dp))
+            Text("◷", style = LogHoundDesign.Text.Status.copy(color = colors.secondary))
             Text(
                 sessionLabel(session),
-                style = LogHoundDesign.Text.Status.copy(color = colors.onSurface),
+                style = LogHoundDesign.Text.Status.copy(color = colors.onSurface, fontWeight = FontWeight.Medium),
             )
             if (session != null) {
-                Spacer(Modifier.width(4.dp))
-                Text("▾", style = LogHoundDesign.Text.Status.copy(color = colors.secondary))
+                Text("▾", style = LogHoundDesign.Text.Status.copy(color = colors.secondary, fontSize = 9.sp))
             }
         }
         if (session != null) {
