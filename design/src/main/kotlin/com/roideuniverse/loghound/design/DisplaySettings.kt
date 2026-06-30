@@ -2,7 +2,10 @@ package com.roideuniverse.loghound.design
 
 import androidx.compose.runtime.staticCompositionLocalOf
 
-enum class Density { Compact, Comfortable }
+enum class Density {
+    Compact,
+    Comfortable,
+}
 
 enum class TimestampFormat(val displayName: String) {
     Full("Full"),
@@ -11,9 +14,9 @@ enum class TimestampFormat(val displayName: String) {
 }
 
 /**
- * Per-user display preferences that affect how log rows are rendered.
- * Provided by the window shell via [LocalDisplaySettings]; plugins read
- * it to honour density, font size, etc. without depending on `app`.
+ * Per-user display preferences that affect how log rows are rendered. Provided by the window shell
+ * via [LocalDisplaySettings]; plugins read it to honour density, font size, etc. without depending
+ * on `app`.
  */
 data class DisplaySettings(
     val density: Density = Density.Compact,

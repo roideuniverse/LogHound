@@ -51,47 +51,48 @@ fun SettingsPanel(
 ) {
     val colors = LocalLogHoundColors.current
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(colors.background),
-    ) {
+    Box(modifier = Modifier.fillMaxSize().background(colors.background)) {
         Column(modifier = Modifier.fillMaxSize()) {
             // Header (52dp)
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(52.dp)
-                    .background(colors.surface)
-                    .padding(horizontal = 18.dp),
+                modifier =
+                    Modifier.fillMaxWidth()
+                        .height(52.dp)
+                        .background(colors.surface)
+                        .padding(horizontal = 18.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(11.dp),
             ) {
-                Text("⚙", style = LogHoundDesign.Text.Tab.copy(color = colors.onSurface, fontSize = 15.sp))
+                Text(
+                    "⚙",
+                    style = LogHoundDesign.Text.Tab.copy(color = colors.onSurface, fontSize = 15.sp),
+                )
                 Text(
                     "Settings",
-                    style = LogHoundDesign.Text.Tab.copy(
-                        fontWeight = FontWeight.SemiBold,
-                        color = colors.onSurface,
-                        fontSize = 15.sp,
-                    ),
+                    style =
+                        LogHoundDesign.Text.Tab.copy(
+                            fontWeight = FontWeight.SemiBold,
+                            color = colors.onSurface,
+                            fontSize = 15.sp,
+                        ),
                 )
                 Spacer(Modifier.weight(1f))
                 // Done button (primary style)
                 Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(6.dp))
-                        .background(colors.button)
-                        .clickable(onClick = onDismiss)
-                        .padding(horizontal = 18.dp, vertical = 8.dp),
+                    modifier =
+                        Modifier.clip(RoundedCornerShape(6.dp))
+                            .background(colors.button)
+                            .clickable(onClick = onDismiss)
+                            .padding(horizontal = 18.dp, vertical = 8.dp)
                 ) {
                     Text(
                         "Done",
-                        style = LogHoundDesign.Text.Tab.copy(
-                            fontWeight = FontWeight.SemiBold,
-                            color = colors.buttonText,
-                            fontSize = 12.sp,
-                        ),
+                        style =
+                            LogHoundDesign.Text.Tab.copy(
+                                fontWeight = FontWeight.SemiBold,
+                                color = colors.buttonText,
+                                fontSize = 12.sp,
+                            ),
                     )
                 }
             }
@@ -102,45 +103,53 @@ fun SettingsPanel(
             Row(modifier = Modifier.fillMaxSize()) {
                 // Category rail (198dp)
                 Column(
-                    modifier = Modifier
-                        .width(198.dp)
-                        .fillMaxHeight()
-                        .background(colors.surface)
-                        .padding(horizontal = 10.dp, vertical = 12.dp),
+                    modifier =
+                        Modifier.width(198.dp)
+                            .fillMaxHeight()
+                            .background(colors.surface)
+                            .padding(horizontal = 10.dp, vertical = 12.dp),
                     verticalArrangement = Arrangement.spacedBy(2.dp),
                 ) {
                     SettingsCat.entries.forEach { cat ->
                         val active = cat == category
                         Text(
                             cat.label,
-                            style = LogHoundDesign.Text.Tab.copy(
-                                fontWeight = if (active) FontWeight.SemiBold else FontWeight.Normal,
-                                color = if (active) colors.onSurface else colors.text2,
-                                fontSize = 13.sp,
-                            ),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(6.dp))
-                                .background(if (active) colors.pressedBackground else Color.Transparent)
-                                .clickable { category = cat }
-                                .padding(horizontal = 10.dp, vertical = 6.dp),
+                            style =
+                                LogHoundDesign.Text.Tab.copy(
+                                    fontWeight =
+                                        if (active) FontWeight.SemiBold else FontWeight.Normal,
+                                    color = if (active) colors.onSurface else colors.text2,
+                                    fontSize = 13.sp,
+                                ),
+                            modifier =
+                                Modifier.fillMaxWidth()
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(
+                                        if (active) colors.pressedBackground else Color.Transparent
+                                    )
+                                    .clickable { category = cat }
+                                    .padding(horizontal = 10.dp, vertical = 6.dp),
                         )
                     }
                     Spacer(Modifier.weight(1f))
                     Text(
                         "LogHound 1.0.0",
-                        style = LogHoundDesign.Text.Status.copy(color = colors.dim2, fontSize = 10.sp),
+                        style =
+                            LogHoundDesign.Text.Status.copy(color = colors.dim2, fontSize = 10.sp),
                         modifier = Modifier.padding(8.dp),
                     )
                 }
-                HorizontalDivider(modifier = Modifier.fillMaxHeight().width(1.dp), color = colors.border)
+                HorizontalDivider(
+                    modifier = Modifier.fillMaxHeight().width(1.dp),
+                    color = colors.border,
+                )
 
                 // Detail area
                 Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .verticalScroll(rememberScrollState())
-                        .padding(horizontal = 30.dp, vertical = 26.dp),
+                    modifier =
+                        Modifier.fillMaxSize()
+                            .verticalScroll(rememberScrollState())
+                            .padding(horizontal = 30.dp, vertical = 26.dp)
                 ) {
                     Box(modifier = Modifier.widthIn(max = 640.dp)) {
                         when (category) {
@@ -193,88 +202,94 @@ private fun ThemeCard(
     val borderColor = if (selected) colors.primary else colors.border
 
     Column(
-        modifier = modifier
-            .clip(RoundedCornerShape(8.dp))
-            .border(1.5.dp, borderColor, RoundedCornerShape(8.dp))
-            .clickable(onClick = onClick),
+        modifier =
+            modifier
+                .clip(RoundedCornerShape(8.dp))
+                .border(1.5.dp, borderColor, RoundedCornerShape(8.dp))
+                .clickable(onClick = onClick)
     ) {
         // Mini preview
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(70.dp)
-                .clip(RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp))
-                .background(tc.background),
+            modifier =
+                Modifier.fillMaxWidth()
+                    .height(70.dp)
+                    .clip(RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp))
+                    .background(tc.background)
         ) {
             // Sidebar strip
             Column(
-                modifier = Modifier
-                    .width(36.dp)
-                    .fillMaxHeight()
-                    .background(tc.surface)
-                    .padding(6.dp),
+                modifier =
+                    Modifier.width(36.dp).fillMaxHeight().background(tc.surface).padding(6.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 repeat(3) { i ->
                     Box(
-                        modifier = Modifier
-                            .fillMaxWidth(if (i == 0) 0.9f else 0.7f)
-                            .height(5.dp)
-                            .clip(RoundedCornerShape(2.dp))
-                            .background(if (i == 0) tc.onSurface else tc.secondary.copy(alpha = 0.5f)),
+                        modifier =
+                            Modifier.fillMaxWidth(if (i == 0) 0.9f else 0.7f)
+                                .height(5.dp)
+                                .clip(RoundedCornerShape(2.dp))
+                                .background(
+                                    if (i == 0) tc.onSurface else tc.secondary.copy(alpha = 0.5f)
+                                )
                     )
                 }
             }
             // Content preview
             Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(8.dp),
+                modifier = Modifier.fillMaxSize().padding(8.dp),
                 verticalArrangement = Arrangement.spacedBy(5.dp),
             ) {
                 Box(
-                    modifier = Modifier
-                        .width(40.dp)
-                        .height(4.dp)
-                        .clip(RoundedCornerShape(2.dp))
-                        .background(tc.primary),
+                    modifier =
+                        Modifier.width(40.dp)
+                            .height(4.dp)
+                            .clip(RoundedCornerShape(2.dp))
+                            .background(tc.primary)
                 )
                 repeat(2) {
                     Box(
-                        modifier = Modifier
-                            .fillMaxWidth(0.8f)
-                            .height(3.dp)
-                            .clip(RoundedCornerShape(2.dp))
-                            .background(tc.onSurface.copy(alpha = 0.4f)),
+                        modifier =
+                            Modifier.fillMaxWidth(0.8f)
+                                .height(3.dp)
+                                .clip(RoundedCornerShape(2.dp))
+                                .background(tc.onSurface.copy(alpha = 0.4f))
                     )
                 }
                 Box(
-                    modifier = Modifier
-                        .size(width = 20.dp, height = 4.dp)
-                        .clip(RoundedCornerShape(2.dp))
-                        .background(tc.priorityError),
+                    modifier =
+                        Modifier.size(width = 20.dp, height = 4.dp)
+                            .clip(RoundedCornerShape(2.dp))
+                            .background(tc.priorityError)
                 )
             }
         }
         // Label row
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(colors.surface)
-                .padding(horizontal = 10.dp, vertical = 8.dp),
+            modifier =
+                Modifier.fillMaxWidth()
+                    .background(colors.surface)
+                    .padding(horizontal = 10.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
                 theme.displayName,
-                style = LogHoundDesign.Text.Tab.copy(
-                    fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
-                    color = colors.onSurface,
-                    fontSize = 13.sp,
-                ),
+                style =
+                    LogHoundDesign.Text.Tab.copy(
+                        fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
+                        color = colors.onSurface,
+                        fontSize = 13.sp,
+                    ),
                 modifier = Modifier.weight(1f),
             )
             if (selected) {
-                Text("✓", style = LogHoundDesign.Text.Status.copy(color = colors.primary, fontWeight = FontWeight.SemiBold))
+                Text(
+                    "✓",
+                    style =
+                        LogHoundDesign.Text.Status.copy(
+                            color = colors.primary,
+                            fontWeight = FontWeight.SemiBold,
+                        ),
+                )
             }
         }
     }
@@ -295,10 +310,20 @@ private fun DisplayDetail(settings: AppSettings, onChange: (AppSettings) -> Unit
     Spacer(Modifier.height(22.dp))
     SectionHeader("FONT SIZE")
     Spacer(Modifier.height(8.dp))
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        StepBtn("-", settings.fontSize > 10) { onChange(settings.copy(fontSize = settings.fontSize - 1)) }
-        Text("${settings.fontSize}px", style = LogHoundDesign.Text.Field.copy(color = colors.onSurface))
-        StepBtn("+", settings.fontSize < 18) { onChange(settings.copy(fontSize = settings.fontSize + 1)) }
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        StepBtn("-", settings.fontSize > 10) {
+            onChange(settings.copy(fontSize = settings.fontSize - 1))
+        }
+        Text(
+            "${settings.fontSize}px",
+            style = LogHoundDesign.Text.Field.copy(color = colors.onSurface),
+        )
+        StepBtn("+", settings.fontSize < 18) {
+            onChange(settings.copy(fontSize = settings.fontSize + 1))
+        }
     }
 
     Spacer(Modifier.height(22.dp))
@@ -307,7 +332,13 @@ private fun DisplayDetail(settings: AppSettings, onChange: (AppSettings) -> Unit
     SegControl(
         options = TimestampFormat.entries.map { it.displayName },
         selected = settings.timestampFormat.displayName,
-        onSelect = { name -> onChange(settings.copy(timestampFormat = TimestampFormat.entries.first { it.displayName == name })) },
+        onSelect = { name ->
+            onChange(
+                settings.copy(
+                    timestampFormat = TimestampFormat.entries.first { it.displayName == name }
+                )
+            )
+        },
     )
 
     Spacer(Modifier.height(22.dp))
@@ -323,36 +354,34 @@ private fun SectionHeader(label: String) {
     val colors = LocalLogHoundColors.current
     Text(
         label,
-        style = LogHoundDesign.Text.Status.copy(
-            fontWeight = FontWeight.SemiBold,
-            letterSpacing = 0.5.sp,
-            color = colors.secondary,
-        ),
+        style =
+            LogHoundDesign.Text.Status.copy(
+                fontWeight = FontWeight.SemiBold,
+                letterSpacing = 0.5.sp,
+                color = colors.secondary,
+            ),
     )
 }
 
 @Composable
 private fun SegControl(options: List<String>, selected: String, onSelect: (String) -> Unit) {
     val colors = LocalLogHoundColors.current
-    Row(
-        modifier = Modifier
-            .clip(RoundedCornerShape(6.dp))
-            .background(colors.input),
-    ) {
+    Row(modifier = Modifier.clip(RoundedCornerShape(6.dp)).background(colors.input)) {
         options.forEach { opt ->
             val active = opt == selected
             Text(
                 opt,
-                style = LogHoundDesign.Text.Tab.copy(
-                    fontWeight = if (active) FontWeight.SemiBold else FontWeight.Medium,
-                    color = if (active) colors.onSurface else colors.secondary,
-                    fontSize = 12.sp,
-                ),
-                modifier = Modifier
-                    .clip(RoundedCornerShape(6.dp))
-                    .background(if (active) colors.elevated else Color.Transparent)
-                    .clickable { onSelect(opt) }
-                    .padding(horizontal = 12.dp, vertical = 6.dp),
+                style =
+                    LogHoundDesign.Text.Tab.copy(
+                        fontWeight = if (active) FontWeight.SemiBold else FontWeight.Medium,
+                        color = if (active) colors.onSurface else colors.secondary,
+                        fontSize = 12.sp,
+                    ),
+                modifier =
+                    Modifier.clip(RoundedCornerShape(6.dp))
+                        .background(if (active) colors.elevated else Color.Transparent)
+                        .clickable { onSelect(opt) }
+                        .padding(horizontal = 12.dp, vertical = 6.dp),
             )
         }
     }
@@ -362,28 +391,32 @@ private fun SegControl(options: List<String>, selected: String, onSelect: (Strin
 private fun ToggleRow(label: String, checked: Boolean, onToggle: (Boolean) -> Unit) {
     val colors = LocalLogHoundColors.current
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(6.dp))
-            .clickable { onToggle(!checked) }
-            .padding(horizontal = 4.dp, vertical = 7.dp),
+        modifier =
+            Modifier.fillMaxWidth()
+                .clip(RoundedCornerShape(6.dp))
+                .clickable { onToggle(!checked) }
+                .padding(horizontal = 4.dp, vertical = 7.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(label, style = LogHoundDesign.Text.Field.copy(color = colors.onSurface), modifier = Modifier.weight(1f))
+        Text(
+            label,
+            style = LogHoundDesign.Text.Field.copy(color = colors.onSurface),
+            modifier = Modifier.weight(1f),
+        )
         Box(
-            modifier = Modifier
-                .width(36.dp)
-                .height(20.dp)
-                .clip(RoundedCornerShape(10.dp))
-                .background(if (checked) colors.primary else colors.border),
+            modifier =
+                Modifier.width(36.dp)
+                    .height(20.dp)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(if (checked) colors.primary else colors.border),
             contentAlignment = if (checked) Alignment.CenterEnd else Alignment.CenterStart,
         ) {
             Box(
-                modifier = Modifier
-                    .padding(2.dp)
-                    .size(16.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(Color.White),
+                modifier =
+                    Modifier.padding(2.dp)
+                        .size(16.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(Color.White)
             )
         }
     }
@@ -394,11 +427,14 @@ private fun StepBtn(label: String, enabled: Boolean, onClick: () -> Unit) {
     val colors = LocalLogHoundColors.current
     Text(
         label,
-        style = LogHoundDesign.Text.Tab.copy(color = if (enabled) colors.onSurface else colors.secondary),
-        modifier = Modifier
-            .clip(RoundedCornerShape(4.dp))
-            .background(colors.input)
-            .then(if (enabled) Modifier.clickable(onClick = onClick) else Modifier)
-            .padding(horizontal = 10.dp, vertical = 4.dp),
+        style =
+            LogHoundDesign.Text.Tab.copy(
+                color = if (enabled) colors.onSurface else colors.secondary
+            ),
+        modifier =
+            Modifier.clip(RoundedCornerShape(4.dp))
+                .background(colors.input)
+                .then(if (enabled) Modifier.clickable(onClick = onClick) else Modifier)
+                .padding(horizontal = 10.dp, vertical = 4.dp),
     )
 }

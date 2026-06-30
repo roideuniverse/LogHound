@@ -95,9 +95,7 @@ fun App(
 
             val activeSession by sessionsManager.active.collectAsState()
             val coroutineScope = rememberCoroutineScope()
-            var activePluginId by remember(plugins) {
-                mutableStateOf(plugins.firstOrNull()?.id)
-            }
+            var activePluginId by remember(plugins) { mutableStateOf(plugins.firstOrNull()?.id) }
             var activeDevice by remember { mutableStateOf<DeviceId?>(null) }
             val detectedDevices by repository.devices.collectAsState()
             if (activeDevice != null && detectedDevices.none { it.id == activeDevice }) {
@@ -111,7 +109,11 @@ fun App(
                         onOpenSettings = { settingsOpen = true },
                         onCycleTheme = {
                             val list = AppTheme.entries
-                            updateSettings(settings.copy(theme = list[(list.indexOf(settings.theme) + 1) % list.size]))
+                            updateSettings(
+                                settings.copy(
+                                    theme = list[(list.indexOf(settings.theme) + 1) % list.size]
+                                )
+                            )
                         },
                     )
                     HorizontalDivider(color = colors.border)
@@ -125,10 +127,8 @@ fun App(
                             VerticalDivider(color = colors.border)
                         }
                         Box(
-                            modifier = Modifier
-                                .weight(1f)
-                                .fillMaxHeight()
-                                .background(colors.background),
+                            modifier =
+                                Modifier.weight(1f).fillMaxHeight().background(colors.background)
                         ) {
                             val active = plugins.firstOrNull { it.id == activePluginId }
                             if (active != null) {
@@ -142,7 +142,10 @@ fun App(
                                 ) {
                                     Text(
                                         "Pick a plugin from the sidebar.",
-                                        style = LogHoundDesign.Text.Status.copy(color = colors.secondary),
+                                        style =
+                                            LogHoundDesign.Text.Status.copy(
+                                                color = colors.secondary
+                                            ),
                                     )
                                 }
                             }
@@ -173,86 +176,78 @@ fun App(
 }
 
 @Composable
-private fun TitleBar(
-    settings: AppSettings,
-    onOpenSettings: () -> Unit,
-    onCycleTheme: () -> Unit,
-) {
+private fun TitleBar(settings: AppSettings, onOpenSettings: () -> Unit, onCycleTheme: () -> Unit) {
     val colors = LocalLogHoundColors.current
-    // On macOS with fullWindowContent, leave space for the traffic lights (~80px wide, centred at ~y=14).
+    // On macOS with fullWindowContent, leave space for the traffic lights (~80px wide, centred at
+    // ~y=14).
     // We render our bar content at 38dp total; the traffic lights float over the left corner.
     val macTopPad = if (isMac) 6.dp else 0.dp
 
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(TITLE_BAR_HEIGHT)
-            .background(colors.surface),
-    ) {
+    Box(modifier = Modifier.fillMaxWidth().height(TITLE_BAR_HEIGHT).background(colors.surface)) {
         // Centered logo + title
         Row(
-            modifier = Modifier
-                .align(Alignment.Center)
-                .padding(top = macTopPad),
+            modifier = Modifier.align(Alignment.Center).padding(top = macTopPad),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(7.dp),
         ) {
             Box(
-                modifier = Modifier
-                    .size(13.dp)
-                    .clip(RoundedCornerShape(3.dp))
-                    .background(colors.onSurface),
+                modifier =
+                    Modifier.size(13.dp)
+                        .clip(RoundedCornerShape(3.dp))
+                        .background(colors.onSurface),
                 contentAlignment = Alignment.Center,
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(5.dp)
-                        .clip(CircleShape)
-                        .background(colors.background),
-                )
+                Box(modifier = Modifier.size(5.dp).clip(CircleShape).background(colors.background))
             }
             Text(
                 "LogHound",
-                style = LogHoundDesign.Text.Tab.copy(
-                    fontWeight = FontWeight.SemiBold,
-                    color = colors.onSurface,
-                    fontSize = 13.sp,
-                    letterSpacing = (-0.1).sp,
-                ),
+                style =
+                    LogHoundDesign.Text.Tab.copy(
+                        fontWeight = FontWeight.SemiBold,
+                        color = colors.onSurface,
+                        fontSize = 13.sp,
+                        letterSpacing = (-0.1).sp,
+                    ),
             )
         }
 
         // Right: theme toggle + settings gear
         Row(
-            modifier = Modifier
-                .align(Alignment.CenterEnd)
-                .padding(end = 12.dp, top = macTopPad),
+            modifier = Modifier.align(Alignment.CenterEnd).padding(end = 12.dp, top = macTopPad),
             horizontalArrangement = Arrangement.spacedBy(6.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Row(
-                modifier = Modifier
-                    .height(24.dp)
-                    .clip(RoundedCornerShape(6.dp))
-                    .background(colors.input)
-                    .clickable(onClick = onCycleTheme)
-                    .padding(horizontal = 9.dp),
+                modifier =
+                    Modifier.height(24.dp)
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(colors.input)
+                        .clickable(onClick = onCycleTheme)
+                        .padding(horizontal = 9.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(5.dp),
             ) {
                 Text("◑", style = LogHoundDesign.Text.Status.copy(color = colors.secondary))
                 Text(
                     settings.theme.displayName,
-                    style = LogHoundDesign.Text.Status.copy(color = colors.onSurface, fontWeight = FontWeight.Medium),
+                    style =
+                        LogHoundDesign.Text.Status.copy(
+                            color = colors.onSurface,
+                            fontWeight = FontWeight.Medium,
+                        ),
                 )
-                Text("▾", style = LogHoundDesign.Text.Status.copy(color = colors.secondary, fontSize = 9.sp))
+                Text(
+                    "▾",
+                    style =
+                        LogHoundDesign.Text.Status.copy(color = colors.secondary, fontSize = 9.sp),
+                )
             }
             Box(
-                modifier = Modifier
-                    .size(width = 26.dp, height = 24.dp)
-                    .clip(RoundedCornerShape(6.dp))
-                    .background(colors.input)
-                    .clickable(onClick = onOpenSettings),
+                modifier =
+                    Modifier.size(width = 26.dp, height = 24.dp)
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(colors.input)
+                        .clickable(onClick = onOpenSettings),
                 contentAlignment = Alignment.Center,
             ) {
                 Text("⚙", style = LogHoundDesign.Text.Status.copy(color = colors.secondary))
@@ -269,58 +264,57 @@ private fun AppSidebar(
 ) {
     val colors = LocalLogHoundColors.current
     val pulse = rememberInfiniteTransition()
-    val pulseAlpha by pulse.animateFloat(
-        initialValue = 1f,
-        targetValue = 0.25f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(900, easing = LinearEasing),
-            repeatMode = RepeatMode.Reverse,
-        ),
-    )
+    val pulseAlpha by
+        pulse.animateFloat(
+            initialValue = 1f,
+            targetValue = 0.25f,
+            animationSpec =
+                infiniteRepeatable(
+                    animation = tween(900, easing = LinearEasing),
+                    repeatMode = RepeatMode.Reverse,
+                ),
+        )
 
-    Column(
-        modifier = Modifier
-            .width(SIDEBAR_WIDTH)
-            .fillMaxHeight()
-            .background(colors.surface),
-    ) {
+    Column(modifier = Modifier.width(SIDEBAR_WIDTH).fillMaxHeight().background(colors.surface)) {
         Text(
             "PLUGINS",
-            style = LogHoundDesign.Text.Status.copy(
-                fontWeight = FontWeight.SemiBold,
-                letterSpacing = 0.6.sp,
-                color = colors.secondary,
-            ),
+            style =
+                LogHoundDesign.Text.Status.copy(
+                    fontWeight = FontWeight.SemiBold,
+                    letterSpacing = 0.6.sp,
+                    color = colors.secondary,
+                ),
             modifier = Modifier.padding(start = 16.dp, top = 16.dp, bottom = 8.dp),
         )
 
         plugins.forEach { plugin ->
             val active = plugin.id == activePluginId
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(28.dp)
-                    .padding(horizontal = 8.dp)
-                    .clip(RoundedCornerShape(6.dp))
-                    .background(if (active) colors.pressedBackground else Color.Transparent)
-                    .clickable { onSelect(plugin) }
-                    .padding(horizontal = 8.dp),
+                modifier =
+                    Modifier.fillMaxWidth()
+                        .height(28.dp)
+                        .padding(horizontal = 8.dp)
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(if (active) colors.pressedBackground else Color.Transparent)
+                        .clickable { onSelect(plugin) }
+                        .padding(horizontal = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(9.dp),
             ) {
                 Box(
-                    modifier = Modifier
-                        .size(5.dp)
-                        .clip(CircleShape)
-                        .background(if (active) colors.onSurface else colors.secondary),
+                    modifier =
+                        Modifier.size(5.dp)
+                            .clip(CircleShape)
+                            .background(if (active) colors.onSurface else colors.secondary)
                 )
                 Text(
                     plugin.name,
-                    style = LogHoundDesign.Text.Tab.copy(
-                        fontWeight = if (active) FontWeight.SemiBold else FontWeight.Normal,
-                        color = if (active) colors.onSurface else colors.text2,
-                        fontSize = 13.sp,
-                    ),
+                    style =
+                        LogHoundDesign.Text.Tab.copy(
+                            fontWeight = if (active) FontWeight.SemiBold else FontWeight.Normal,
+                            color = if (active) colors.onSurface else colors.text2,
+                            fontSize = 13.sp,
+                        ),
                     modifier = Modifier.weight(1f),
                 )
             }
@@ -330,25 +324,21 @@ private fun AppSidebar(
 
         HorizontalDivider(color = colors.border, modifier = Modifier.padding(horizontal = 8.dp))
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(start = 16.dp, top = 10.dp, bottom = 14.dp),
+            modifier = Modifier.fillMaxWidth().padding(start = 16.dp, top = 10.dp, bottom = 14.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(7.dp),
         ) {
             Box(
-                modifier = Modifier
-                    .size(6.dp)
-                    .clip(CircleShape)
-                    .alpha(pulseAlpha)
-                    .background(colors.pulse),
+                modifier =
+                    Modifier.size(6.dp).clip(CircleShape).alpha(pulseAlpha).background(colors.pulse)
             )
             Text(
                 "Streaming · adb",
-                style = LogHoundDesign.Text.Status.copy(
-                    color = colors.secondary,
-                    fontWeight = FontWeight.Medium,
-                ),
+                style =
+                    LogHoundDesign.Text.Status.copy(
+                        color = colors.secondary,
+                        fontWeight = FontWeight.Medium,
+                    ),
             )
         }
     }

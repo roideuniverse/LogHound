@@ -1,12 +1,12 @@
 package com.roideuniverse.loghound.design
 
-import org.junit.Rule
-import org.junit.Test
-import org.junit.rules.TemporaryFolder
 import java.io.File
 import java.util.Properties
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
+import org.junit.Rule
+import org.junit.Test
+import org.junit.rules.TemporaryFolder
 
 class UserFontConfigTest {
 
@@ -43,16 +43,20 @@ class UserFontConfigTest {
         // We intentionally don't try to render the font here — `parseOverride`
         // only validates filesystem reachability; the Compose `Font(File)`
         // factory does its own load-time validation later.
-        assertEquals(ttf.absolutePath, UserFontConfig.parseOverride(props, UserFontConfig.KEY_UI) { it }?.absolutePath)
+        assertEquals(
+            ttf.absolutePath,
+            UserFontConfig.parseOverride(props, UserFontConfig.KEY_UI) { it }?.absolutePath,
+        )
     }
 
     @Test
     fun `parseOverride applies tilde expansion through the provided expander`() {
         val ttf = tmp.newFile("expanded.ttf")
         val props = Properties().apply { setProperty(UserFontConfig.KEY_UI, "~/expanded.ttf") }
-        val resolved = UserFontConfig.parseOverride(props, UserFontConfig.KEY_UI) { raw ->
-            raw.replace("~", tmp.root.absolutePath)
-        }
+        val resolved =
+            UserFontConfig.parseOverride(props, UserFontConfig.KEY_UI) { raw ->
+                raw.replace("~", tmp.root.absolutePath)
+            }
         assertEquals(ttf.absolutePath, resolved?.absolutePath)
     }
 
@@ -78,9 +82,12 @@ class UserFontConfigTest {
 
     @Test
     fun `loadProperties returns parsed Properties when file present`() {
-        val file = tmp.newFile("config.properties").apply {
-            writeText("${UserFontConfig.KEY_UI}=/foo/bar.ttf\n${UserFontConfig.KEY_MONO}=/baz.ttf\n")
-        }
+        val file =
+            tmp.newFile("config.properties").apply {
+                writeText(
+                    "${UserFontConfig.KEY_UI}=/foo/bar.ttf\n${UserFontConfig.KEY_MONO}=/baz.ttf\n"
+                )
+            }
         val props = UserFontConfig.loadProperties(file)
         assertEquals("/foo/bar.ttf", props?.getProperty(UserFontConfig.KEY_UI))
         assertEquals("/baz.ttf", props?.getProperty(UserFontConfig.KEY_MONO))

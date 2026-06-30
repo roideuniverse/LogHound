@@ -4,14 +4,14 @@ import com.roideuniverse.loghound.core.LogEntry
 import com.roideuniverse.loghound.core.LogFilter
 import com.roideuniverse.loghound.core.LogPriority
 import com.roideuniverse.loghound.database.createLogDataStore
-import kotlinx.coroutines.test.runTest
-import org.junit.Rule
-import org.junit.Test
-import org.junit.rules.TemporaryFolder
 import java.io.File
 import kotlin.random.Random
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
+import kotlinx.coroutines.test.runTest
+import org.junit.Rule
+import org.junit.Test
+import org.junit.rules.TemporaryFolder
 
 class LogRepositoryStressTest {
 
@@ -79,17 +79,18 @@ class LogRepositoryStressTest {
 
         val total = 50_000
         val errorEvery = 17
-        val items = List(total) { i ->
-            LogEntry(
-                id = 0L,
-                timestamp = "01-15 12:00:00.000",
-                pid = 1,
-                tid = 1,
-                priority = if (i % errorEvery == 0) LogPriority.Error else LogPriority.Info,
-                tag = "T",
-                message = "m-$i",
-            )
-        }
+        val items =
+            List(total) { i ->
+                LogEntry(
+                    id = 0L,
+                    timestamp = "01-15 12:00:00.000",
+                    pid = 1,
+                    tid = 1,
+                    priority = if (i % errorEvery == 0) LogPriority.Error else LogPriority.Info,
+                    tag = "T",
+                    message = "m-$i",
+                )
+            }
         items.chunked(2_000).forEach { chunk -> repo.append(chunk) }
 
         val expectedErrors = (0 until total).count { it % errorEvery == 0 }.toLong()

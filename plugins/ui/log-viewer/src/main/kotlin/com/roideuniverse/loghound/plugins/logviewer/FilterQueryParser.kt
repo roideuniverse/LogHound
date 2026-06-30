@@ -20,27 +20,38 @@ internal object FilterQueryParser {
             if (colon > 0 && colon < token.length - 1) {
                 val key = token.substring(0, colon).lowercase()
                 val value = token.substring(colon + 1)
-                val matched = when (key) {
-                    "tag" -> { tag = value; true }
-                    "level" -> parseLevel(value)?.also { minPriority = it } != null
-                    "pid" -> value.toIntOrNull()?.also { pid = it } != null
-                    "tid" -> value.toIntOrNull()?.also { tid = it } != null
-                    "package" -> { packageName = value; true }
-                    "device" -> { deviceId = value; true }
-                    else -> false
-                }
+                val matched =
+                    when (key) {
+                        "tag" -> {
+                            tag = value
+                            true
+                        }
+                        "level" -> parseLevel(value)?.also { minPriority = it } != null
+                        "pid" -> value.toIntOrNull()?.also { pid = it } != null
+                        "tid" -> value.toIntOrNull()?.also { tid = it } != null
+                        "package" -> {
+                            packageName = value
+                            true
+                        }
+                        "device" -> {
+                            deviceId = value
+                            true
+                        }
+                        else -> false
+                    }
                 if (matched) continue
             }
             freeTextParts += token
         }
 
         val freeText = freeTextParts.joinToString(" ")
-        val (textSearch, regexSearch) = if (freeText.startsWith("/")) {
-            val pattern = freeText.removePrefix("/").removeSuffix("/")
-            null to pattern.takeIf { it.isNotEmpty() }
-        } else {
-            freeText.takeIf { it.isNotEmpty() } to null
-        }
+        val (textSearch, regexSearch) =
+            if (freeText.startsWith("/")) {
+                val pattern = freeText.removePrefix("/").removeSuffix("/")
+                null to pattern.takeIf { it.isNotEmpty() }
+            } else {
+                freeText.takeIf { it.isNotEmpty() } to null
+            }
 
         return LogFilter(
             tag = tag,

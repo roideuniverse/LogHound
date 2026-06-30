@@ -1,9 +1,7 @@
 package com.roideuniverse.loghound.plugins.sessions
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -20,14 +18,12 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -35,10 +31,10 @@ import com.roideuniverse.loghound.core.UIPlugin
 import com.roideuniverse.loghound.design.LocalLogHoundColors
 import com.roideuniverse.loghound.design.LogHoundDesign
 import dev.zacsweers.metro.Inject
-import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import kotlinx.coroutines.launch
 
 object SessionsTestTags {
     const val SIDEBAR = "sessions.sidebar"
@@ -48,19 +44,16 @@ object SessionsTestTags {
 }
 
 /**
- * Sidebar plugin for the Sessions feature. Renders the live session at the
- * top, then a list of archived sessions below.
+ * Sidebar plugin for the Sessions feature. Renders the live session at the top, then a list of
+ * archived sessions below.
  *
- * The actions (end + archive, rename) delegate to the injected
- * [SessionsManager]. This UI only triggers them and re-reads the resulting
- * StateFlows.
+ * The actions (end + archive, rename) delegate to the injected [SessionsManager]. This UI only
+ * triggers them and re-reads the resulting StateFlows.
  *
- * Archive sub-tabs (open an archived session in a read-only Log Viewer) are
- * deliberately out of scope here — see issue #21's follow-up tasks.
+ * Archive sub-tabs (open an archived session in a read-only Log Viewer) are deliberately out of
+ * scope here — see issue #21's follow-up tasks.
  */
-class SessionsPlugin @Inject constructor(
-    private val manager: SessionsManager,
-) : UIPlugin {
+class SessionsPlugin @Inject constructor(private val manager: SessionsManager) : UIPlugin {
     override val id: String = "core.sessions"
     override val name: String = "Sessions"
 
@@ -72,16 +65,23 @@ class SessionsPlugin @Inject constructor(
 
         val colors = LocalLogHoundColors.current
         Surface(modifier = modifier.fillMaxSize(), color = colors.background) {
-            Column(modifier = Modifier.fillMaxSize().padding(16.dp).testTag(SessionsTestTags.SIDEBAR)) {
-                Text("Current session", style = LogHoundDesign.Text.Tab.copy(fontWeight = FontWeight.SemiBold, color = colors.onSurface))
+            Column(
+                modifier = Modifier.fillMaxSize().padding(16.dp).testTag(SessionsTestTags.SIDEBAR)
+            ) {
+                Text(
+                    "Current session",
+                    style =
+                        LogHoundDesign.Text.Tab.copy(
+                            fontWeight = FontWeight.SemiBold,
+                            color = colors.onSurface,
+                        ),
+                )
                 Spacer(Modifier.height(8.dp))
                 if (active != null) {
                     CurrentSessionCard(
                         name = active!!.name,
                         startedAt = active!!.startedAt,
-                        onEndAndNew = {
-                            scope.launch { manager.endAndStartNew() }
-                        },
+                        onEndAndNew = { scope.launch { manager.endAndStartNew() } },
                     )
                 } else {
                     Text(
@@ -96,7 +96,11 @@ class SessionsPlugin @Inject constructor(
 
                 Text(
                     "Archived sessions (${archived.size})",
-                    style = LogHoundDesign.Text.Tab.copy(fontWeight = FontWeight.SemiBold, color = colors.onSurface),
+                    style =
+                        LogHoundDesign.Text.Tab.copy(
+                            fontWeight = FontWeight.SemiBold,
+                            color = colors.onSurface,
+                        ),
                 )
                 Spacer(Modifier.height(8.dp))
                 if (archived.isEmpty()) {
@@ -118,22 +122,22 @@ class SessionsPlugin @Inject constructor(
 }
 
 @Composable
-private fun CurrentSessionCard(
-    name: String,
-    startedAt: Long,
-    onEndAndNew: () -> Unit,
-) {
+private fun CurrentSessionCard(name: String, startedAt: Long, onEndAndNew: () -> Unit) {
     val colors = LocalLogHoundColors.current
     Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(6.dp))
-            .background(colors.surface)
-            .padding(12.dp),
+        modifier =
+            Modifier.fillMaxWidth()
+                .clip(RoundedCornerShape(6.dp))
+                .background(colors.surface)
+                .padding(12.dp)
     ) {
         Text(
             name,
-            style = LogHoundDesign.Text.Tab.copy(fontWeight = FontWeight.SemiBold, color = colors.onSurface),
+            style =
+                LogHoundDesign.Text.Tab.copy(
+                    fontWeight = FontWeight.SemiBold,
+                    color = colors.onSurface,
+                ),
             modifier = Modifier.testTag(SessionsTestTags.CURRENT_NAME),
         )
         Spacer(Modifier.height(2.dp))
@@ -144,13 +148,17 @@ private fun CurrentSessionCard(
         Spacer(Modifier.height(12.dp))
         Button(
             onClick = onEndAndNew,
-            colors = ButtonDefaults.buttonColors(
-                containerColor = colors.button,
-                contentColor = colors.buttonText,
-            ),
+            colors =
+                ButtonDefaults.buttonColors(
+                    containerColor = colors.button,
+                    contentColor = colors.buttonText,
+                ),
             modifier = Modifier.testTag(SessionsTestTags.END_AND_NEW),
         ) {
-            Text("End & Start New Session", style = LogHoundDesign.Text.Button.copy(color = colors.buttonText))
+            Text(
+                "End & Start New Session",
+                style = LogHoundDesign.Text.Button.copy(color = colors.buttonText),
+            )
         }
     }
 }
@@ -159,10 +167,8 @@ private fun CurrentSessionCard(
 private fun ArchivedSessionRow(session: Session) {
     val colors = LocalLogHoundColors.current
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 8.dp)
-            .testTag(SessionsTestTags.ARCHIVED_ROW),
+        modifier =
+            Modifier.fillMaxWidth().padding(vertical = 8.dp).testTag(SessionsTestTags.ARCHIVED_ROW),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {

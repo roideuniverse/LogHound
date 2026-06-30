@@ -15,8 +15,6 @@ dependencies {
 
 sqldelight {
     databases {
-        create("LogHoundDb") {
-            packageName.set("com.roideuniverse.loghound.database.sqldelight")
-        }
+        create("LogHoundDb") { packageName.set("com.roideuniverse.loghound.database.sqldelight") }
     }
 }

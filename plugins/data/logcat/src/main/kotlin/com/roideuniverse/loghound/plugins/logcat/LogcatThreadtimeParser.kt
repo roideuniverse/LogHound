@@ -6,15 +6,16 @@ import com.roideuniverse.loghound.core.LogPriority
 /**
  * Parses Android `adb logcat -v threadtime` lines into `LogEntry`.
  *
- * Format: `MM-DD HH:MM:SS.mmm  PID  TID  PRIORITY  TAG: MESSAGE`
+ * Format: `MM-DD HH:MM:SS.mmm PID TID PRIORITY TAG: MESSAGE`
  *
  * Malformed lines return null — callers skip them.
  */
 internal object LogcatThreadtimeParser {
 
-    private val LINE = Regex(
-        """^(\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}\.\d{3})\s+(\d+)\s+(\d+)\s+([VDIWEFS])\s+([^:]+?):\s?(.*)$"""
-    )
+    private val LINE =
+        Regex(
+            """^(\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}\.\d{3})\s+(\d+)\s+(\d+)\s+([VDIWEFS])\s+([^:]+?):\s?(.*)$"""
+        )
 
     fun parse(line: String): LogEntry? {
         val m = LINE.matchEntire(line) ?: return null

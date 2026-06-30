@@ -2,20 +2,19 @@ package com.roideuniverse.loghound.database
 
 import com.roideuniverse.loghound.core.LogEntry
 import com.roideuniverse.loghound.core.LogPriority
+import java.io.File
+import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 import kotlinx.coroutines.test.runTest
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
-import java.io.File
-import kotlin.test.assertEquals
-import kotlin.test.assertTrue
 
 class SqlDelightLogDataStoreTest {
 
     @get:Rule val tmp = TemporaryFolder()
 
-    private fun newStore(): LogDataStore =
-        createLogDataStore(File(tmp.newFolder(), "logs.db"))
+    private fun newStore(): LogDataStore = createLogDataStore(File(tmp.newFolder(), "logs.db"))
 
     private fun entry(
         timestamp: String = "01-15 12:00:00.000",
@@ -82,15 +81,16 @@ class SqlDelightLogDataStoreTest {
     @Test
     fun preserves_all_LogEntry_fields_across_round_trip() = runTest {
         val store = newStore()
-        val original = entry(
-            timestamp = "12-31 23:59:59.999",
-            pid = 42,
-            tid = 99,
-            priority = LogPriority.Fatal,
-            tag = "Crashy",
-            message = "kaboom: \"quoted\" with /slashes/ and -hyphens-",
-            packageName = "com.example.crash",
-        )
+        val original =
+            entry(
+                timestamp = "12-31 23:59:59.999",
+                pid = 42,
+                tid = 99,
+                priority = LogPriority.Fatal,
+                tag = "Crashy",
+                message = "kaboom: \"quoted\" with /slashes/ and -hyphens-",
+                packageName = "com.example.crash",
+            )
         store.insert(listOf(original))
         val read = store.selectTail(1).single()
         assertEquals(original.timestamp, read.timestamp)

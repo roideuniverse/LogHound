@@ -20,30 +20,25 @@ import kotlinx.coroutines.launch
 // sidebar layout expects Log Viewer, then UUID Grouping, then Sessions, with
 // any scripted plugins trailing. Sort by this known order; unknown ids (scripted
 // plugins) sort last in discovery order.
-private val UI_PLUGIN_ORDER = listOf(
-    "core.log-viewer",
-    "core.uuid-grouping",
-    "core.sessions",
-)
+private val UI_PLUGIN_ORDER = listOf("core.log-viewer", "core.uuid-grouping", "core.sessions")
 
 fun main() = application {
     val graph = remember { createGraph<AppGraph>() }
     val repository = graph.repository
     val sessionsManager = graph.sessionsManager
     val dataPlugins = remember(graph) { graph.dataPlugins.toList() }
-    val uiPlugins: List<UIPlugin> = remember(graph) {
-        graph.uiPlugins.sortedBy { plugin ->
-            UI_PLUGIN_ORDER.indexOf(plugin.id).let { if (it == -1) Int.MAX_VALUE else it }
+    val uiPlugins: List<UIPlugin> =
+        remember(graph) {
+            graph.uiPlugins.sortedBy { plugin ->
+                UI_PLUGIN_ORDER.indexOf(plugin.id).let { if (it == -1) Int.MAX_VALUE else it }
+            }
         }
-    }
 
     val backgroundScope = remember { CoroutineScope(SupervisorJob() + Dispatchers.IO) }
     remember(dataPlugins) {
         dataPlugins.forEach { plugin -> backgroundScope.launch { plugin.run(repository) } }
     }
-    remember(sessionsManager) {
-        backgroundScope.launch { sessionsManager.initialize() }
-    }
+    remember(sessionsManager) { backgroundScope.launch { sessionsManager.initialize() } }
 
     var sidebarVisible by remember { mutableStateOf(true) }
 

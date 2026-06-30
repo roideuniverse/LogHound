@@ -1,32 +1,38 @@
 package com.roideuniverse.loghound.plugins.logviewer
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.VerticalScrollbar
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
-import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.rememberScrollbarAdapter
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.rememberScrollbarAdapter
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
@@ -34,8 +40,6 @@ import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.ui.window.Popup
-import androidx.compose.ui.window.PopupProperties
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -46,30 +50,23 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.width
-import androidx.compose.material3.CircularProgressIndicator
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.compose.foundation.Canvas
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Popup
+import androidx.compose.ui.window.PopupProperties
 import com.roideuniverse.loghound.core.LogEntry
 import com.roideuniverse.loghound.core.LogFilter
 import com.roideuniverse.loghound.core.LogRepository
@@ -83,10 +80,10 @@ import com.roideuniverse.loghound.design.LogHoundDesign
 import com.roideuniverse.loghound.design.PriorityBadge
 import com.roideuniverse.loghound.design.TimestampFormat
 import dev.zacsweers.metro.Inject
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.launch
 
-class LogViewerPlugin @Inject constructor(
-    private val repository: LogRepository,
-) : UIPlugin {
+class LogViewerPlugin @Inject constructor(private val repository: LogRepository) : UIPlugin {
     override val id: String = "core.log-viewer"
     override val name: String = "Log Viewer"
 
@@ -96,10 +93,11 @@ class LogViewerPlugin @Inject constructor(
         var tagFilters by remember { mutableStateOf<List<TagFilter>>(emptyList()) }
         val activeDevice = LocalActiveDevice.current
         val parsedFilter: LogFilter = remember(queryText) { FilterQueryParser.parse(queryText) }
-        val filter: LogFilter = remember(parsedFilter, activeDevice) {
-            if (parsedFilter.deviceId != null) parsedFilter
-            else parsedFilter.copy(deviceId = activeDevice?.value)
-        }
+        val filter: LogFilter =
+            remember(parsedFilter, activeDevice) {
+                if (parsedFilter.deviceId != null) parsedFilter
+                else parsedFilter.copy(deviceId = activeDevice?.value)
+            }
         val entries = remember { mutableStateListOf<LogEntry>() }
         val listState = rememberLazyListState()
         var loadingOlder by remember { mutableStateOf(false) }
@@ -109,8 +107,11 @@ class LogViewerPlugin @Inject constructor(
         // Top tags from visible entries, recomputed when entries changes.
         val availableTags by remember {
             derivedStateOf {
-                entries.groupingBy { it.tag }.eachCount()
-                    .entries.sortedByDescending { it.value }
+                entries
+                    .groupingBy { it.tag }
+                    .eachCount()
+                    .entries
+                    .sortedByDescending { it.value }
                     .map { it.key to it.value }
                     .take(50)
             }
@@ -128,10 +129,11 @@ class LogViewerPlugin @Inject constructor(
             repository.ingested.collect { batch ->
                 val matched = batch.filter(filter::matches).applyTagFilters(tagFilters)
                 if (matched.isEmpty()) return@collect
-                val wasAtBottom = listState.run {
-                    val last = layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1
-                    last >= entries.lastIndex - 2
-                }
+                val wasAtBottom =
+                    listState.run {
+                        val last = layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1
+                        last >= entries.lastIndex - 2
+                    }
                 entries.addAll(matched)
                 if (wasAtBottom) {
                     while (entries.size > MAX_IN_MEMORY) entries.removeAt(0)
@@ -144,16 +146,20 @@ class LogViewerPlugin @Inject constructor(
             snapshotFlow { listState.firstVisibleItemIndex }
                 .distinctUntilChanged()
                 .collect { firstVisible ->
-                    if (firstVisible <= LOAD_OLDER_THRESHOLD &&
-                        !loadingOlder && !olderExhausted && entries.isNotEmpty()
+                    if (
+                        firstVisible <= LOAD_OLDER_THRESHOLD &&
+                            !loadingOlder &&
+                            !olderExhausted &&
+                            entries.isNotEmpty()
                     ) {
                         loadingOlder = true
                         try {
-                            val older = repository.query(
-                                filter = filter,
-                                beforeId = entries.first().id,
-                                limit = LOAD_OLDER_PAGE_SIZE,
-                            )
+                            val older =
+                                repository.query(
+                                    filter = filter,
+                                    beforeId = entries.first().id,
+                                    limit = LOAD_OLDER_PAGE_SIZE,
+                                )
                             if (older.entries.isEmpty()) {
                                 olderExhausted = true
                             } else {
@@ -191,10 +197,16 @@ class LogViewerPlugin @Inject constructor(
                     }
                 },
                 onToggleTag = { tag ->
-                    tagFilters = tagFilters.map {
-                        if (it.tag == tag) it.copy(mode = if (it.mode == TagMode.Include) TagMode.Exclude else TagMode.Include)
-                        else it
-                    }
+                    tagFilters =
+                        tagFilters.map {
+                            if (it.tag == tag)
+                                it.copy(
+                                    mode =
+                                        if (it.mode == TagMode.Include) TagMode.Exclude
+                                        else TagMode.Include
+                                )
+                            else it
+                        }
                 },
                 onRemoveTag = { tag -> tagFilters = tagFilters.filter { it.tag != tag } },
                 availableTags = availableTags,
@@ -217,7 +229,8 @@ class LogViewerPlugin @Inject constructor(
                                 display = display,
                                 searchText = searchText,
                                 onToggle = {
-                                    expandedEntryId = if (expandedEntryId == entry.id) null else entry.id
+                                    expandedEntryId =
+                                        if (expandedEntryId == entry.id) null else entry.id
                                 },
                             )
                         }
@@ -236,14 +249,15 @@ class LogViewerPlugin @Inject constructor(
                                 }
                             }
                         },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = colors.button,
-                            contentColor = colors.buttonText,
-                        ),
-                        modifier = Modifier
-                            .align(Alignment.BottomEnd)
-                            .padding(end = 24.dp, bottom = 16.dp)
-                            .testTag(TestTags.JUMP_TO_BOTTOM),
+                        colors =
+                            ButtonDefaults.buttonColors(
+                                containerColor = colors.button,
+                                contentColor = colors.buttonText,
+                            ),
+                        modifier =
+                            Modifier.align(Alignment.BottomEnd)
+                                .padding(end = 24.dp, bottom = 16.dp)
+                                .testTag(TestTags.JUMP_TO_BOTTOM),
                     ) {
                         Text("Jump to bottom ↓")
                     }
@@ -261,10 +275,7 @@ private const val MAX_IN_MEMORY = 10_000
 private fun LoadingOlderRow() {
     val colors = LocalLogHoundColors.current
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 6.dp)
-            .testTag(TestTags.LOADING_OLDER),
+        modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp).testTag(TestTags.LOADING_OLDER),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.Center,
     ) {
@@ -286,21 +297,23 @@ private fun LogRowWithExpansion(
     val colors = LocalLogHoundColors.current
     val interactionSource = remember { MutableInteractionSource() }
     val isHovered by interactionSource.collectIsHoveredAsState()
-    val zebraBase = if (display.zebraRows && index % 2 == 1) colors.hoverBackground else colors.background
-    val rowBg = when {
-        expanded || isHovered -> colors.hoverBackground
-        else -> zebraBase
-    }
+    val zebraBase =
+        if (display.zebraRows && index % 2 == 1) colors.hoverBackground else colors.background
+    val rowBg =
+        when {
+            expanded || isHovered -> colors.hoverBackground
+            else -> zebraBase
+        }
     Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(rowBg)
-            .hoverable(interactionSource)
-            .clickable(
-                interactionSource = interactionSource,
-                indication = null,
-                onClick = onToggle,
-            ),
+        modifier =
+            Modifier.fillMaxWidth()
+                .background(rowBg)
+                .hoverable(interactionSource)
+                .clickable(
+                    interactionSource = interactionSource,
+                    indication = null,
+                    onClick = onToggle,
+                )
     ) {
         LogRow(entry, display, searchText)
         if (expanded) {
@@ -335,27 +348,33 @@ private fun LogRow(entry: LogEntry, display: DisplaySettings, searchText: String
     val fs = display.fontSize.sp
     val lh = (display.fontSize + if (display.density == Density.Comfortable) 10 else 8).sp
     val padV = if (display.density == Density.Comfortable) 7.dp else 3.dp
-    val bodyStyle = LogHoundDesign.Text.Row.copy(color = colors.onSurface, fontSize = fs, lineHeight = lh)
+    val bodyStyle =
+        LogHoundDesign.Text.Row.copy(color = colors.onSurface, fontSize = fs, lineHeight = lh)
     val metaStyle = bodyStyle.copy(fontSize = (display.fontSize - 1).sp, color = colors.secondary)
     val tagStyle = bodyStyle.copy(fontWeight = FontWeight.Medium)
 
-    val timestamp = when (display.timestampFormat) {
-        TimestampFormat.Full    -> entry.timestamp
-        TimestampFormat.Short   -> entry.timestamp.substringAfter(" ").ifEmpty { entry.timestamp }
-        TimestampFormat.Seconds -> entry.timestamp.substringBefore(".")
-    }
+    val timestamp =
+        when (display.timestampFormat) {
+            TimestampFormat.Full -> entry.timestamp
+            TimestampFormat.Short -> entry.timestamp.substringAfter(" ").ifEmpty { entry.timestamp }
+            TimestampFormat.Seconds -> entry.timestamp.substringBefore(".")
+        }
 
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 8.dp, vertical = padV)
-            .testTag(TestTags.LOG_ROW),
+        modifier =
+            Modifier.fillMaxWidth()
+                .padding(horizontal = 8.dp, vertical = padV)
+                .testTag(TestTags.LOG_ROW),
         verticalAlignment = Alignment.Top,
     ) {
         PriorityBadge(entry.priority, modifier = Modifier.padding(top = 1.dp, end = 10.dp))
         Text(timestamp, style = metaStyle, modifier = Modifier.width(84.dp).padding(top = 1.dp))
         if (display.showPid) {
-            Text("${entry.pid} ${entry.tid}", style = metaStyle, modifier = Modifier.width(88.dp).padding(top = 1.dp))
+            Text(
+                "${entry.pid} ${entry.tid}",
+                style = metaStyle,
+                modifier = Modifier.width(88.dp).padding(top = 1.dp),
+            )
         }
         Text(
             entry.tag,
@@ -382,9 +401,21 @@ private fun SearchIcon() {
         val r = size.width * 0.36f
         val cx = size.width * 0.42f
         val cy = size.height * 0.42f
-        drawCircle(color = colors.secondary, radius = r, center = Offset(cx, cy), style = Stroke(width = 1.5.dp.toPx()))
-        val lx = cx + r * 0.72f; val ly = cy + r * 0.72f
-        drawLine(color = colors.secondary, start = Offset(lx, ly), end = Offset(size.width * 0.9f, size.height * 0.9f), strokeWidth = 1.5.dp.toPx(), cap = StrokeCap.Round)
+        drawCircle(
+            color = colors.secondary,
+            radius = r,
+            center = Offset(cx, cy),
+            style = Stroke(width = 1.5.dp.toPx()),
+        )
+        val lx = cx + r * 0.72f
+        val ly = cy + r * 0.72f
+        drawLine(
+            color = colors.secondary,
+            start = Offset(lx, ly),
+            end = Offset(size.width * 0.9f, size.height * 0.9f),
+            strokeWidth = 1.5.dp.toPx(),
+            cap = StrokeCap.Round,
+        )
     }
 }
 
@@ -407,7 +438,10 @@ private fun HighlightedText(
         val needle = search.lowercase()
         while (pos <= text.length) {
             val hit = lower.indexOf(needle, pos)
-            if (hit == -1) { append(text.substring(pos)); break }
+            if (hit == -1) {
+                append(text.substring(pos))
+                break
+            }
             append(text.substring(pos, hit))
             withStyle(SpanStyle(background = colors.hlBackground, color = colors.hlForeground)) {
                 append(text.substring(hit, hit + search.length))
@@ -431,19 +465,23 @@ private fun FilterBar(
     val colors = LocalLogHoundColors.current
 
     // Detect `tag:xxx` suffix in query → show autocomplete.
-    val tagFragment = remember(query) {
-        val last = query.trimEnd().split(" ").last()
-        if (last.startsWith("tag:", ignoreCase = true)) last.drop(4) else null
-    }
-    val acSuggestions = remember(tagFragment, availableTags) {
-        if (tagFragment == null) emptyList()
-        else availableTags.filter { (tag, _) ->
-            tagFragment.isEmpty() || tag.contains(tagFragment, ignoreCase = true)
+    val tagFragment =
+        remember(query) {
+            val last = query.trimEnd().split(" ").last()
+            if (last.startsWith("tag:", ignoreCase = true)) last.drop(4) else null
         }
-    }
+    val acSuggestions =
+        remember(tagFragment, availableTags) {
+            if (tagFragment == null) emptyList()
+            else
+                availableTags.filter { (tag, _) ->
+                    tagFragment.isEmpty() || tag.contains(tagFragment, ignoreCase = true)
+                }
+        }
 
     fun pickTag(tag: String) {
-        val stripped = query.replace(Regex("""(\s|^)tag:\S*$""", RegexOption.IGNORE_CASE), "").trimEnd()
+        val stripped =
+            query.replace(Regex("""(\s|^)tag:\S*$""", RegexOption.IGNORE_CASE), "").trimEnd()
         onQueryChange(stripped)
         onAddTag(tag)
     }
@@ -458,20 +496,20 @@ private fun FilterBar(
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 val shape = RoundedCornerShape(6.dp)
-                val style: TextStyle = LocalTextStyle.current.merge(LogHoundDesign.Text.Field.copy(color = colors.onSurface))
+                val style: TextStyle =
+                    LocalTextStyle.current.merge(
+                        LogHoundDesign.Text.Field.copy(color = colors.onSurface)
+                    )
                 // Search field with chips + search icon
                 Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(32.dp)
-                        .clip(shape)
-                        .background(colors.input),
+                    modifier =
+                        Modifier.weight(1f).height(32.dp).clip(shape).background(colors.input)
                 ) {
                     Row(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(start = 11.dp, end = 8.dp)
-                            .horizontalScroll(rememberScrollState()),
+                        modifier =
+                            Modifier.fillMaxSize()
+                                .padding(start = 11.dp, end = 8.dp)
+                                .horizontalScroll(rememberScrollState()),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         SearchIcon()
@@ -489,10 +527,10 @@ private fun FilterBar(
                             onValueChange = onQueryChange,
                             singleLine = true,
                             textStyle = style,
-                            modifier = Modifier
-                                .weight(1f)
-                                .padding(horizontal = 2.dp, vertical = 2.dp)
-                                .testTag(TestTags.FILTER_INPUT),
+                            modifier =
+                                Modifier.weight(1f)
+                                    .padding(horizontal = 2.dp, vertical = 2.dp)
+                                    .testTag(TestTags.FILTER_INPUT),
                             decorationBox = { inner ->
                                 Box {
                                     if (query.isEmpty() && tagFilters.isEmpty()) {
@@ -511,17 +549,22 @@ private fun FilterBar(
                 Spacer(Modifier.width(6.dp))
                 // Tags facet button
                 Box {
-                    TagsButton(
-                        activeCount = tagFilters.size,
-                        onClick = { tagsMenuOpen = true },
-                    )
+                    TagsButton(activeCount = tagFilters.size, onClick = { tagsMenuOpen = true })
                     DropdownMenu(
                         expanded = tagsMenuOpen,
                         onDismissRequest = { tagsMenuOpen = false },
                     ) {
                         if (availableTags.isEmpty()) {
                             DropdownMenuItem(
-                                text = { Text("No tags in view", style = LogHoundDesign.Text.Status.copy(color = colors.secondary)) },
+                                text = {
+                                    Text(
+                                        "No tags in view",
+                                        style =
+                                            LogHoundDesign.Text.Status.copy(
+                                                color = colors.secondary
+                                            ),
+                                    )
+                                },
                                 onClick = { tagsMenuOpen = false },
                                 enabled = false,
                             )
@@ -533,16 +576,24 @@ private fun FilterBar(
                                         Row(verticalAlignment = Alignment.CenterVertically) {
                                             Text(
                                                 tag,
-                                                style = LogHoundDesign.Text.Tab.copy(
-                                                    color = if (active) colors.primary else colors.onSurface,
-                                                    fontWeight = if (active) FontWeight.SemiBold else FontWeight.Normal,
-                                                ),
+                                                style =
+                                                    LogHoundDesign.Text.Tab.copy(
+                                                        color =
+                                                            if (active) colors.primary
+                                                            else colors.onSurface,
+                                                        fontWeight =
+                                                            if (active) FontWeight.SemiBold
+                                                            else FontWeight.Normal,
+                                                    ),
                                                 modifier = Modifier.weight(1f),
                                             )
                                             Spacer(Modifier.width(12.dp))
                                             Text(
                                                 count.toString(),
-                                                style = LogHoundDesign.Text.Status.copy(color = colors.secondary),
+                                                style =
+                                                    LogHoundDesign.Text.Status.copy(
+                                                        color = colors.secondary
+                                                    ),
                                             )
                                         }
                                     },
@@ -560,15 +611,12 @@ private fun FilterBar(
                     onAppend = { clause ->
                         val sep = if (query.isBlank()) "" else " "
                         onQueryChange("$query$sep$clause")
-                    },
+                    }
                 )
             }
             // Tag autocomplete dropdown
             if (acSuggestions.isNotEmpty()) {
-                TagAutocomplete(
-                    suggestions = acSuggestions,
-                    onPick = { pickTag(it) },
-                )
+                TagAutocomplete(suggestions = acSuggestions, onPick = { pickTag(it) })
             }
         }
     }
@@ -581,11 +629,11 @@ private fun FilterChip(chip: TagFilter, onToggle: () -> Unit, onRemove: () -> Un
     val bgColor = if (isExclude) colors.priorityBgError else colors.accentTint
     val fgColor = if (isExclude) colors.priorityError else colors.primary
     Row(
-        modifier = Modifier
-            .clip(RoundedCornerShape(3.dp))
-            .background(bgColor)
-            .clickable(onClick = onToggle)
-            .padding(start = 6.dp, end = 2.dp, top = 2.dp, bottom = 2.dp),
+        modifier =
+            Modifier.clip(RoundedCornerShape(3.dp))
+                .background(bgColor)
+                .clickable(onClick = onToggle)
+                .padding(start = 6.dp, end = 2.dp, top = 2.dp, bottom = 2.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
@@ -596,10 +644,10 @@ private fun FilterChip(chip: TagFilter, onToggle: () -> Unit, onRemove: () -> Un
         Text(
             "✕",
             style = LogHoundDesign.Text.Status.copy(color = fgColor),
-            modifier = Modifier
-                .clip(RoundedCornerShape(2.dp))
-                .clickable(onClick = onRemove)
-                .padding(horizontal = 3.dp),
+            modifier =
+                Modifier.clip(RoundedCornerShape(2.dp))
+                    .clickable(onClick = onRemove)
+                    .padding(horizontal = 3.dp),
         )
     }
 }
@@ -609,25 +657,30 @@ private fun TagsButton(activeCount: Int, onClick: () -> Unit) {
     val colors = LocalLogHoundColors.current
     val active = activeCount > 0
     Row(
-        modifier = Modifier
-            .clip(RoundedCornerShape(4.dp))
-            .background(if (active) colors.accentTint else colors.input)
-            .clickable(onClick = onClick)
-            .padding(horizontal = 8.dp, vertical = 5.dp),
+        modifier =
+            Modifier.clip(RoundedCornerShape(4.dp))
+                .background(if (active) colors.accentTint else colors.input)
+                .clickable(onClick = onClick)
+                .padding(horizontal = 8.dp, vertical = 5.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         Text(
             "Tags",
-            style = LogHoundDesign.Text.Status.copy(
-                color = if (active) colors.primary else colors.secondary,
-                fontWeight = if (active) FontWeight.SemiBold else FontWeight.Medium,
-            ),
+            style =
+                LogHoundDesign.Text.Status.copy(
+                    color = if (active) colors.primary else colors.secondary,
+                    fontWeight = if (active) FontWeight.SemiBold else FontWeight.Medium,
+                ),
         )
         if (activeCount > 0) {
             Text(
                 activeCount.toString(),
-                style = LogHoundDesign.Text.Status.copy(color = colors.primary, fontWeight = FontWeight.SemiBold),
+                style =
+                    LogHoundDesign.Text.Status.copy(
+                        color = colors.primary,
+                        fontWeight = FontWeight.SemiBold,
+                    ),
             )
         }
     }
@@ -637,26 +690,24 @@ private fun TagsButton(activeCount: Int, onClick: () -> Unit) {
 private fun TagAutocomplete(suggestions: List<Pair<String, Int>>, onPick: (String) -> Unit) {
     val colors = LocalLogHoundColors.current
     Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(colors.elevated)
-            .border(1.dp, colors.border),
+        modifier = Modifier.fillMaxWidth().background(colors.elevated).border(1.dp, colors.border)
     ) {
         Text(
             "TAGS IN VIEW · tap to filter",
-            style = LogHoundDesign.Text.Status.copy(
-                color = colors.secondary,
-                fontWeight = FontWeight.SemiBold,
-            ),
+            style =
+                LogHoundDesign.Text.Status.copy(
+                    color = colors.secondary,
+                    fontWeight = FontWeight.SemiBold,
+                ),
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
         )
         HorizontalDivider(color = colors.borderSoft)
         suggestions.take(8).forEach { (tag, count) ->
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { onPick(tag) }
-                    .padding(horizontal = 12.dp, vertical = 7.dp),
+                modifier =
+                    Modifier.fillMaxWidth()
+                        .clickable { onPick(tag) }
+                        .padding(horizontal = 12.dp, vertical = 7.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
@@ -674,7 +725,8 @@ private fun TagAutocomplete(suggestions: List<Pair<String, Int>>, onPick: (Strin
     }
 }
 
-private val FILTER_CLAUSE_KEYS: List<String> = listOf("tag", "level", "pid", "tid", "package", "device")
+private val FILTER_CLAUSE_KEYS: List<String> =
+    listOf("tag", "level", "pid", "tid", "package", "device")
 
 @Composable
 private fun FilterBuilderButton(onAppend: (String) -> Unit) {
@@ -718,23 +770,33 @@ private fun FilterBuilderPanel(
     val shape = RoundedCornerShape(6.dp)
 
     Surface(
-        modifier = Modifier
-            .clip(shape)
-            .border(1.dp, colors.border, shape)
-            .testTag(TestTags.FILTER_BUILDER_PANEL),
+        modifier =
+            Modifier.clip(shape)
+                .border(1.dp, colors.border, shape)
+                .testTag(TestTags.FILTER_BUILDER_PANEL),
         color = colors.elevated,
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
             Text(
                 "Add filter clause",
-                style = LogHoundDesign.Text.Tab.copy(fontWeight = FontWeight.SemiBold, color = colors.onSurface),
+                style =
+                    LogHoundDesign.Text.Tab.copy(
+                        fontWeight = FontWeight.SemiBold,
+                        color = colors.onSurface,
+                    ),
             )
             Spacer(Modifier.height(8.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box {
                     TextButton(onClick = { keyMenuOpen = true }) {
-                        Text(selectedKey, style = LogHoundDesign.Text.Button.copy(color = colors.onSurface))
-                        Text(" ▾", style = LogHoundDesign.Text.Status.copy(color = colors.secondary))
+                        Text(
+                            selectedKey,
+                            style = LogHoundDesign.Text.Button.copy(color = colors.onSurface),
+                        )
+                        Text(
+                            " ▾",
+                            style = LogHoundDesign.Text.Status.copy(color = colors.secondary),
+                        )
                     }
                     DropdownMenu(
                         expanded = keyMenuOpen,
@@ -742,7 +804,13 @@ private fun FilterBuilderPanel(
                     ) {
                         for (key in FILTER_CLAUSE_KEYS) {
                             DropdownMenuItem(
-                                text = { Text(key, style = LogHoundDesign.Text.Tab.copy(color = colors.onSurface)) },
+                                text = {
+                                    Text(
+                                        key,
+                                        style =
+                                            LogHoundDesign.Text.Tab.copy(color = colors.onSurface),
+                                    )
+                                },
                                 onClick = {
                                     selectedKey = key
                                     keyMenuOpen = false
@@ -758,13 +826,13 @@ private fun FilterBuilderPanel(
                     onValueChange = { value = it },
                     singleLine = true,
                     textStyle = LogHoundDesign.Text.Field.copy(color = colors.onSurface),
-                    modifier = Modifier
-                        .width(180.dp)
-                        .clip(fieldShape)
-                        .background(colors.input)
-                        .border(1.dp, colors.border, fieldShape)
-                        .padding(horizontal = 8.dp, vertical = 6.dp)
-                        .testTag(TestTags.FILTER_BUILDER_VALUE),
+                    modifier =
+                        Modifier.width(180.dp)
+                            .clip(fieldShape)
+                            .background(colors.input)
+                            .border(1.dp, colors.border, fieldShape)
+                            .padding(horizontal = 8.dp, vertical = 6.dp)
+                            .testTag(TestTags.FILTER_BUILDER_VALUE),
                     decorationBox = { inner ->
                         Box {
                             if (value.isEmpty()) {
@@ -782,7 +850,10 @@ private fun FilterBuilderPanel(
             Spacer(Modifier.height(12.dp))
             Row(horizontalArrangement = Arrangement.End, modifier = Modifier.fillMaxWidth()) {
                 TextButton(onClick = onDismiss) {
-                    Text("Cancel", style = LogHoundDesign.Text.Button.copy(color = colors.secondary))
+                    Text(
+                        "Cancel",
+                        style = LogHoundDesign.Text.Button.copy(color = colors.secondary),
+                    )
                 }
                 Spacer(Modifier.width(4.dp))
                 TextButton(
@@ -797,17 +868,21 @@ private fun FilterBuilderPanel(
     }
 }
 
-private fun placeholderFor(key: String): String = when (key) {
-    "tag" -> "Activity"
-    "level" -> "W"
-    "pid" -> "1234"
-    "tid" -> "5678"
-    "package" -> "com.app.debug"
-    "device" -> "Pixel 8"
-    else -> ""
-}
+private fun placeholderFor(key: String): String =
+    when (key) {
+        "tag" -> "Activity"
+        "level" -> "W"
+        "pid" -> "1234"
+        "tid" -> "5678"
+        "package" -> "com.app.debug"
+        "device" -> "Pixel 8"
+        else -> ""
+    }
 
-enum class TagMode { Include, Exclude }
+enum class TagMode {
+    Include,
+    Exclude,
+}
 
 data class TagFilter(val tag: String, val mode: TagMode = TagMode.Include)
 
@@ -817,6 +892,6 @@ private fun List<LogEntry>.applyTagFilters(filters: List<TagFilter>): List<LogEn
     val excludes = filters.filter { it.mode == TagMode.Exclude }.map { it.tag }
     return filter { entry ->
         (includes.isEmpty() || entry.tag in includes) &&
-        (excludes.isEmpty() || entry.tag !in excludes)
+            (excludes.isEmpty() || entry.tag !in excludes)
     }
 }

@@ -1,8 +1,8 @@
 package com.roideuniverse.loghound.plugins.uuidgrouping
 
-import org.junit.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
+import org.junit.Test
 
 class UuidExtractorTest {
 

@@ -1,16 +1,15 @@
 package com.roideuniverse.loghound.scripting
 
-import org.junit.Rule
-import org.junit.Test
-import org.junit.rules.TemporaryFolder
 import java.io.File
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
+import org.junit.Rule
+import org.junit.Test
+import org.junit.rules.TemporaryFolder
 
 class PluginScriptHostTest {
 
-    @get:Rule
-    val tmp = TemporaryFolder()
+    @get:Rule val tmp = TemporaryFolder()
 
     @Test
     fun `empty plugins dir returns empty list`() {
@@ -38,8 +37,9 @@ class PluginScriptHostTest {
     @Test
     fun `tiny hello plugin loads and registers id and name`() {
         val dir = tmp.newFolder("plugins")
-        File(dir, "hello.kts").writeText(
-            """
+        File(dir, "hello.kts")
+            .writeText(
+                """
             plugin {
                 id = "hello-test"
                 name = "Hello Test"
@@ -47,8 +47,9 @@ class PluginScriptHostTest {
                     text("hi")
                 }
             }
-            """.trimIndent()
-        )
+            """
+                    .trimIndent()
+            )
         val plugins = PluginScriptHost.loadAll(dir)
         assertEquals(1, plugins.size)
         assertEquals("hello-test", plugins.single().id)
@@ -86,15 +87,17 @@ class PluginScriptHostTest {
         // We want one bad script to be skipped, not blow up the whole batch.
         val dir = tmp.newFolder("plugins")
         File(dir, "broken.kts").writeText("this is not valid kotlin {{{")
-        File(dir, "valid.kts").writeText(
-            """
+        File(dir, "valid.kts")
+            .writeText(
+                """
             plugin {
                 id = "valid"
                 name = "Valid"
                 ui { text("ok") }
             }
-            """.trimIndent()
-        )
+            """
+                    .trimIndent()
+            )
         val plugins = PluginScriptHost.loadAll(dir)
         assertEquals(1, plugins.size)
         assertEquals("valid", plugins.single().id)

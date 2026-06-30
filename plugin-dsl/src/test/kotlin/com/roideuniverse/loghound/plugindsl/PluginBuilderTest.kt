@@ -1,8 +1,8 @@
 package com.roideuniverse.loghound.plugindsl
 
-import org.junit.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import org.junit.Test
 
 class PluginBuilderTest {
 

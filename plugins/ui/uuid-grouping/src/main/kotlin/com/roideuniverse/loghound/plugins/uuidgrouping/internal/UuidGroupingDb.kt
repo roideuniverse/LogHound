@@ -9,10 +9,11 @@ internal fun openUuidGroupingDb(databaseFile: File): UuidGroupingDb {
     val isNew = !databaseFile.exists()
     if (isNew) databaseFile.parentFile?.mkdirs()
 
-    val driver = JdbcSqliteDriver(
-        url = "jdbc:sqlite:${databaseFile.absolutePath}",
-        properties = Properties(),
-    )
+    val driver =
+        JdbcSqliteDriver(
+            url = "jdbc:sqlite:${databaseFile.absolutePath}",
+            properties = Properties(),
+        )
     if (isNew) {
         UuidGroupingDb.Schema.create(driver)
     } else {
@@ -26,7 +27,8 @@ internal fun openUuidGroupingDb(databaseFile: File): UuidGroupingDb {
                 log_id INTEGER NOT NULL,
                 PRIMARY KEY (uuid, log_id)
             )
-            """.trimIndent(),
+            """
+                .trimIndent(),
             0,
         )
     }

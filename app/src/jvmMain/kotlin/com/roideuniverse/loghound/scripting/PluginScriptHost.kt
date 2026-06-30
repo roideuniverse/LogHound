@@ -13,45 +13,39 @@ import kotlin.script.experimental.jvm.jvm
 import kotlin.script.experimental.jvmhost.BasicJvmScriptingHost
 import kotlin.script.experimental.jvmhost.createJvmCompilationConfigurationFromTemplate
 
-@KotlinScript(
-    fileExtension = "kts",
-    compilationConfiguration = LogHoundScriptConfig::class,
-)
+@KotlinScript(fileExtension = "kts", compilationConfiguration = LogHoundScriptConfig::class)
 abstract class LogHoundScript
 
-object LogHoundScriptConfig : ScriptCompilationConfiguration({
-    defaultImports(
-        "com.roideuniverse.loghound.plugindsl.plugin",
-        "com.roideuniverse.loghound.plugindsl.stateOf",
-        "com.roideuniverse.loghound.plugindsl.tabController",
-        "com.roideuniverse.loghound.plugindsl.PluginTheme",
-        "com.roideuniverse.loghound.design.LogHoundDesign",
-        "com.roideuniverse.loghound.core.LogEntry",
-        "com.roideuniverse.loghound.core.LogPriority",
-        "com.roideuniverse.loghound.core.LogFilter",
-        "androidx.compose.ui.graphics.Color",
-        "androidx.compose.ui.text.TextStyle",
-        "androidx.compose.ui.text.font.FontFamily",
-        "androidx.compose.ui.text.font.FontWeight",
-        "androidx.compose.ui.unit.sp",
-        "androidx.compose.ui.unit.dp",
-        "androidx.compose.runtime.snapshotFlow",
-        "androidx.compose.runtime.MutableState",
-        "kotlinx.coroutines.coroutineScope",
-        "kotlinx.coroutines.launch",
-    )
-    jvm {
-        dependenciesFromCurrentContext(wholeClasspath = true)
-    }
-})
+object LogHoundScriptConfig :
+    ScriptCompilationConfiguration({
+        defaultImports(
+            "com.roideuniverse.loghound.plugindsl.plugin",
+            "com.roideuniverse.loghound.plugindsl.stateOf",
+            "com.roideuniverse.loghound.plugindsl.tabController",
+            "com.roideuniverse.loghound.plugindsl.PluginTheme",
+            "com.roideuniverse.loghound.design.LogHoundDesign",
+            "com.roideuniverse.loghound.core.LogEntry",
+            "com.roideuniverse.loghound.core.LogPriority",
+            "com.roideuniverse.loghound.core.LogFilter",
+            "androidx.compose.ui.graphics.Color",
+            "androidx.compose.ui.text.TextStyle",
+            "androidx.compose.ui.text.font.FontFamily",
+            "androidx.compose.ui.text.font.FontWeight",
+            "androidx.compose.ui.unit.sp",
+            "androidx.compose.ui.unit.dp",
+            "androidx.compose.runtime.snapshotFlow",
+            "androidx.compose.runtime.MutableState",
+            "kotlinx.coroutines.coroutineScope",
+            "kotlinx.coroutines.launch",
+        )
+        jvm { dependenciesFromCurrentContext(wholeClasspath = true) }
+    })
 
 object PluginScriptHost {
 
     fun loadAll(dir: File): List<DslPlugin> {
         if (!dir.exists()) return emptyList()
-        val files = dir.listFiles { f -> f.isFile && f.extension == "kts" }
-            ?.sorted()
-            .orEmpty()
+        val files = dir.listFiles { f -> f.isFile && f.extension == "kts" }?.sorted().orEmpty()
         if (files.isEmpty()) return emptyList()
 
         val host = BasicJvmScriptingHost()
@@ -73,7 +67,7 @@ object PluginScriptHost {
                     value
                 } else {
                     System.err.println(
-                        "[plugin-script] ${file.name}: did not return a DslPlugin (got ${value?.javaClass?.simpleName ?: "null"})",
+                        "[plugin-script] ${file.name}: did not return a DslPlugin (got ${value?.javaClass?.simpleName ?: "null"})"
                     )
                     null
                 }

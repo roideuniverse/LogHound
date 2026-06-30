@@ -25,9 +25,8 @@ import dev.zacsweers.metro.SingleIn
 import java.io.File
 
 /**
- * Every on-disk location the app reads or writes, rooted at `~/.loghound/`.
- * Bundled so the graph injects one value and tests can repoint the root at a
- * temp dir.
+ * Every on-disk location the app reads or writes, rooted at `~/.loghound/`. Bundled so the graph
+ * injects one value and tests can repoint the root at a temp dir.
  */
 class AppPaths(val root: File) {
     val logsDbFile: File = File(root, "logs.db")
@@ -42,14 +41,14 @@ class AppPaths(val root: File) {
 }
 
 /**
- * App-wide dependency graph. Replaces the manual constructor wiring that used
- * to live in main.kt: it owns the single LogRepository, the SessionsManager,
- * and the two plugin multibindings (UI + data).
+ * App-wide dependency graph. Replaces the manual constructor wiring that used to live in main.kt:
+ * it owns the single LogRepository, the SessionsManager, and the two plugin multibindings (UI +
+ * data).
  *
- * UuidGroupingPlugin is provided once as a scoped singleton and contributed to
- * BOTH plugin sets, so its DataPlugin side and UIPlugin side are the same
- * instance (its run() asserts the repository identity). Scripted DslPlugins are
- * discovered at startup and folded into both sets via @ElementsIntoSet.
+ * UuidGroupingPlugin is provided once as a scoped singleton and contributed to BOTH plugin sets, so
+ * its DataPlugin side and UIPlugin side are the same instance (its run() asserts the repository
+ * identity). Scripted DslPlugins are discovered at startup and folded into both sets
+ * via @ElementsIntoSet.
  */
 @DependencyGraph(AppScope::class)
 interface AppGraph {
@@ -64,9 +63,7 @@ interface AppGraph {
     @Binds @IntoSet val SessionsPlugin.bindSessionsUi: UIPlugin
     @Binds @IntoSet val LogcatDataPlugin.bindLogcatData: DataPlugin
 
-    @Provides
-    @SingleIn(AppScope::class)
-    fun provideAppPaths(): AppPaths = AppPaths.default()
+    @Provides @SingleIn(AppScope::class) fun provideAppPaths(): AppPaths = AppPaths.default()
 
     @Provides
     @SingleIn(AppScope::class)
@@ -78,27 +75,27 @@ interface AppGraph {
         UuidGroupingPlugin(databaseFile = paths.uuidDbFile, repository = repository)
 
     @Provides @IntoSet fun uuidGroupingUi(plugin: UuidGroupingPlugin): UIPlugin = plugin
+
     @Provides @IntoSet fun uuidGroupingData(plugin: UuidGroupingPlugin): DataPlugin = plugin
 
     @Provides
     @SingleIn(AppScope::class)
-    fun provideSessionsConfig(paths: AppPaths): SessionsConfig = SessionsConfig(
-        sessionsDbFile = paths.sessionsDbFile,
-        liveLogsDbFile = paths.logsDbFile,
-        pluginDbDir = paths.pluginDbDir,
-        archivesDir = paths.archivesDir,
-    )
+    fun provideSessionsConfig(paths: AppPaths): SessionsConfig =
+        SessionsConfig(
+            sessionsDbFile = paths.sessionsDbFile,
+            liveLogsDbFile = paths.logsDbFile,
+            pluginDbDir = paths.pluginDbDir,
+            archivesDir = paths.archivesDir,
+        )
 
     // Wipes the live logs.db then every DataPlugin's derived state, repository
     // first so plugin observers don't see ID gaps mid-clear.
     @Provides
-    fun provideStoreClearer(
-        repository: LogRepository,
-        dataPlugins: Set<DataPlugin>,
-    ): StoreClearer = StoreClearer {
-        repository.clearStore()
-        dataPlugins.forEach { runCatching { it.clearStore() } }
-    }
+    fun provideStoreClearer(repository: LogRepository, dataPlugins: Set<DataPlugin>): StoreClearer =
+        StoreClearer {
+            repository.clearStore()
+            dataPlugins.forEach { runCatching { it.clearStore() } }
+        }
 
     @Provides
     @SingleIn(AppScope::class)

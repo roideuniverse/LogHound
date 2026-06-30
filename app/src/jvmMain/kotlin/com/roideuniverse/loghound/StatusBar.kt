@@ -47,10 +47,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-/**
- * Stable test tags for the status-bar UI. Loadbearing for E2E — renames
- * require updating tests.
- */
+/** Stable test tags for the status-bar UI. Loadbearing for E2E — renames require updating tests. */
 object StatusBarTestTags {
     const val DEVICE_PILL = "statusBar.devicePill"
     const val DEVICE_MENU_ITEM = "statusBar.devicePillItem"
@@ -59,8 +56,8 @@ object StatusBarTestTags {
 }
 
 /**
- * Bottom-of-window status bar. Currently hosts the device scope pill;
- * a session pill ([Sessions]) lives next to it once issue #21 lands.
+ * Bottom-of-window status bar. Currently hosts the device scope pill; a session pill ([Sessions])
+ * lives next to it once issue #21 lands.
  */
 @Composable
 fun StatusBar(
@@ -73,23 +70,26 @@ fun StatusBar(
 ) {
     val colors = LocalLogHoundColors.current
     val pulse = rememberInfiniteTransition()
-    val pulseAlpha by pulse.animateFloat(
-        initialValue = 1f,
-        targetValue = 0.25f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(900, easing = LinearEasing),
-            repeatMode = RepeatMode.Reverse,
-        ),
-    )
-    Surface(
-        modifier = modifier.fillMaxWidth().height(28.dp),
-        color = colors.surface,
-    ) {
+    val pulseAlpha by
+        pulse.animateFloat(
+            initialValue = 1f,
+            targetValue = 0.25f,
+            animationSpec =
+                infiniteRepeatable(
+                    animation = tween(900, easing = LinearEasing),
+                    repeatMode = RepeatMode.Reverse,
+                ),
+        )
+    Surface(modifier = modifier.fillMaxWidth().height(28.dp), color = colors.surface) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            DevicePill(devices = devices, activeDevice = activeDevice, onSelectDevice = onSelectDevice)
+            DevicePill(
+                devices = devices,
+                activeDevice = activeDevice,
+                onSelectDevice = onSelectDevice,
+            )
             Spacer(Modifier.width(8.dp))
             SessionPill(session = activeSession, onEndAndStartNew = onEndAndStartNewSession)
             Spacer(Modifier.weight(1f))
@@ -103,15 +103,19 @@ fun StatusBar(
                     style = LogHoundDesign.Text.Status.copy(color = colors.secondary),
                 )
                 Box(
-                    modifier = Modifier
-                        .size(6.dp)
-                        .clip(CircleShape)
-                        .alpha(pulseAlpha)
-                        .background(colors.pulse),
+                    modifier =
+                        Modifier.size(6.dp)
+                            .clip(CircleShape)
+                            .alpha(pulseAlpha)
+                            .background(colors.pulse)
                 )
                 Text(
                     "Streaming…",
-                    style = LogHoundDesign.Text.Status.copy(color = colors.secondary, fontWeight = FontWeight.Medium),
+                    style =
+                        LogHoundDesign.Text.Status.copy(
+                            color = colors.secondary,
+                            fontWeight = FontWeight.Medium,
+                        ),
                 )
             }
         }
@@ -138,48 +142,60 @@ private fun DevicePill(
         }
     }
     val label = pillLabel(orderedDevices, activeDevice)
-    val dotColors: List<Color> = when {
-        activeDevice == null -> orderedDevices.map { deviceColors[it.id.value] ?: colors.secondary }
-        else -> listOf(deviceColors[activeDevice.value] ?: colors.secondary)
-    }
+    val dotColors: List<Color> =
+        when {
+            activeDevice == null ->
+                orderedDevices.map { deviceColors[it.id.value] ?: colors.secondary }
+            else -> listOf(deviceColors[activeDevice.value] ?: colors.secondary)
+        }
 
     Box {
         Row(
-            modifier = Modifier
-                .height(20.dp)
-                .clip(RoundedCornerShape(5.dp))
-                .background(colors.input)
-                .clickable { menuOpen = true }
-                .padding(horizontal = 9.dp)
-                .testTag(StatusBarTestTags.DEVICE_PILL),
+            modifier =
+                Modifier.height(20.dp)
+                    .clip(RoundedCornerShape(5.dp))
+                    .background(colors.input)
+                    .clickable { menuOpen = true }
+                    .padding(horizontal = 9.dp)
+                    .testTag(StatusBarTestTags.DEVICE_PILL),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             dotColors.forEach { dotColor ->
                 Box(modifier = Modifier.size(7.dp).clip(CircleShape).background(dotColor))
             }
-            Text(label, style = LogHoundDesign.Text.Status.copy(color = colors.onSurface, fontWeight = FontWeight.Medium))
-            Text("▾", style = LogHoundDesign.Text.Status.copy(color = colors.secondary, fontSize = 9.sp))
+            Text(
+                label,
+                style =
+                    LogHoundDesign.Text.Status.copy(
+                        color = colors.onSurface,
+                        fontWeight = FontWeight.Medium,
+                    ),
+            )
+            Text(
+                "▾",
+                style = LogHoundDesign.Text.Status.copy(color = colors.secondary, fontSize = 9.sp),
+            )
         }
-        DropdownMenu(
-            expanded = menuOpen,
-            onDismissRequest = { menuOpen = false },
-        ) {
+        DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
             DropdownMenuItem(
                 text = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Box(
-                            modifier = Modifier
-                                .size(8.dp)
-                                .clip(CircleShape)
-                                .background(colors.secondary),
+                            modifier =
+                                Modifier.size(8.dp).clip(CircleShape).background(colors.secondary)
                         )
                         Spacer(Modifier.width(8.dp))
                         Text(
                             "All devices",
-                            style = if (activeDevice == null) {
-                                LogHoundDesign.Text.Tab.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold, color = colors.onSurface)
-                            } else LogHoundDesign.Text.Tab.copy(color = colors.onSurface),
+                            style =
+                                if (activeDevice == null) {
+                                    LogHoundDesign.Text.Tab.copy(
+                                        fontWeight =
+                                            androidx.compose.ui.text.font.FontWeight.SemiBold,
+                                        color = colors.onSurface,
+                                    )
+                                } else LogHoundDesign.Text.Tab.copy(color = colors.onSurface),
                         )
                     }
                 },
@@ -197,17 +213,24 @@ private fun DevicePill(
                     text = {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Box(
-                                modifier = Modifier
-                                    .size(8.dp)
-                                    .clip(CircleShape)
-                                    .background(deviceColors[device.id.value] ?: colors.secondary),
+                                modifier =
+                                    Modifier.size(8.dp)
+                                        .clip(CircleShape)
+                                        .background(
+                                            deviceColors[device.id.value] ?: colors.secondary
+                                        )
                             )
                             Spacer(Modifier.width(8.dp))
                             Text(
                                 device.label,
-                                style = if (activeDevice == device.id) {
-                                    LogHoundDesign.Text.Tab.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold, color = colors.onSurface)
-                                } else LogHoundDesign.Text.Tab.copy(color = colors.onSurface),
+                                style =
+                                    if (activeDevice == device.id) {
+                                        LogHoundDesign.Text.Tab.copy(
+                                            fontWeight =
+                                                androidx.compose.ui.text.font.FontWeight.SemiBold,
+                                            color = colors.onSurface,
+                                        )
+                                    } else LogHoundDesign.Text.Tab.copy(color = colors.onSurface),
                             )
                         }
                     },
@@ -231,42 +254,52 @@ private fun pillLabel(devices: List<Device>, active: DeviceId?): String {
 }
 
 @Composable
-private fun SessionPill(
-    session: Session?,
-    onEndAndStartNew: () -> Unit,
-) {
+private fun SessionPill(session: Session?, onEndAndStartNew: () -> Unit) {
     var menuOpen by remember { mutableStateOf(false) }
     val colors = LocalLogHoundColors.current
     Box {
         Row(
-            modifier = Modifier
-                .height(20.dp)
-                .clip(RoundedCornerShape(5.dp))
-                .background(colors.input)
-                .clickable(enabled = session != null) { menuOpen = true }
-                .padding(horizontal = 9.dp)
-                .testTag(StatusBarTestTags.SESSION_PILL),
+            modifier =
+                Modifier.height(20.dp)
+                    .clip(RoundedCornerShape(5.dp))
+                    .background(colors.input)
+                    .clickable(enabled = session != null) { menuOpen = true }
+                    .padding(horizontal = 9.dp)
+                    .testTag(StatusBarTestTags.SESSION_PILL),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             Text("◷", style = LogHoundDesign.Text.Status.copy(color = colors.secondary))
             Text(
                 sessionLabel(session),
-                style = LogHoundDesign.Text.Status.copy(color = colors.onSurface, fontWeight = FontWeight.Medium),
+                style =
+                    LogHoundDesign.Text.Status.copy(
+                        color = colors.onSurface,
+                        fontWeight = FontWeight.Medium,
+                    ),
             )
             if (session != null) {
-                Text("▾", style = LogHoundDesign.Text.Status.copy(color = colors.secondary, fontSize = 9.sp))
+                Text(
+                    "▾",
+                    style =
+                        LogHoundDesign.Text.Status.copy(color = colors.secondary, fontSize = 9.sp),
+                )
             }
         }
         if (session != null) {
-            DropdownMenu(
-                expanded = menuOpen,
-                onDismissRequest = { menuOpen = false },
-            ) {
+            DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
                 DropdownMenuItem(
                     text = {
                         Column {
-                            Text(session.name, style = LogHoundDesign.Text.Tab.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold, color = colors.onSurface))
+                            Text(
+                                session.name,
+                                style =
+                                    LogHoundDesign.Text.Tab.copy(
+                                        fontWeight =
+                                            androidx.compose.ui.text.font.FontWeight.SemiBold,
+                                        color = colors.onSurface,
+                                    ),
+                            )
                             Text(
                                 "Started " + formatTimestamp(session.startedAt),
                                 style = LogHoundDesign.Text.Status.copy(color = colors.secondary),
@@ -278,7 +311,12 @@ private fun SessionPill(
                 )
                 HorizontalDivider(color = colors.border)
                 DropdownMenuItem(
-                    text = { Text("End & Start New Session", style = LogHoundDesign.Text.Tab.copy(color = colors.onSurface)) },
+                    text = {
+                        Text(
+                            "End & Start New Session",
+                            style = LogHoundDesign.Text.Tab.copy(color = colors.onSurface),
+                        )
+                    },
                     onClick = {
                         menuOpen = false
                         onEndAndStartNew()

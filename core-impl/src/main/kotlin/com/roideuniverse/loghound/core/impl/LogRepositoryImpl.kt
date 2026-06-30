@@ -17,9 +17,7 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 @SingleIn(AppScope::class)
-class LogRepositoryImpl @Inject constructor(
-    private val dataStore: LogDataStore,
-) : LogRepository {
+class LogRepositoryImpl @Inject constructor(private val dataStore: LogDataStore) : LogRepository {
 
     private val _ingested = MutableSharedFlow<List<LogEntry>>(extraBufferCapacity = 64)
     override val ingested: Flow<List<LogEntry>> = _ingested.asSharedFlow()
@@ -52,15 +50,13 @@ class LogRepositoryImpl @Inject constructor(
 
         // Empty filter: single SQL call, return up to `limit` rows directly.
         if (filter == LogFilter()) {
-            val rawRows = when {
-                afterId != null -> dataStore.selectAfter(afterId, limit)
-                beforeId != null -> dataStore.selectBefore(beforeId, limit)
-                else -> dataStore.selectTail(limit)
-            }
-            return LogPage(
-                entries = rawRows.sortedBy { it.id },
-                hasMore = rawRows.size >= limit,
-            )
+            val rawRows =
+                when {
+                    afterId != null -> dataStore.selectAfter(afterId, limit)
+                    beforeId != null -> dataStore.selectBefore(beforeId, limit)
+                    else -> dataStore.selectTail(limit)
+                }
+            return LogPage(entries = rawRows.sortedBy { it.id }, hasMore = rawRows.size >= limit)
         }
 
         // Non-empty filter: scan page-by-page until we collect `limit` matches or
@@ -93,9 +89,9 @@ class LogRepositoryImpl @Inject constructor(
 
             else -> {
                 // No cursor → start from the tail; cursor → start before that id.
-                val firstPage: List<LogEntry> = beforeId
-                    ?.let { dataStore.selectBefore(it, pageSize) }
-                    ?: dataStore.selectTail(pageSize)
+                val firstPage: List<LogEntry> =
+                    beforeId?.let { dataStore.selectBefore(it, pageSize) }
+                        ?: dataStore.selectTail(pageSize)
                 val firstFull = firstPage.size == pageSize
                 val firstFilled = consumePage(firstPage)
 
@@ -115,10 +111,7 @@ class LogRepositoryImpl @Inject constructor(
             }
         }
 
-        return LogPage(
-            entries = matched.sortedBy { it.id },
-            hasMore = matched.size >= limit,
-        )
+        return LogPage(entries = matched.sortedBy { it.id }, hasMore = matched.size >= limit)
     }
 
     private companion object {

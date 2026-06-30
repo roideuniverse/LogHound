@@ -12,8 +12,7 @@ import org.junit.Test
 
 class DslRendererTest {
 
-    @get:Rule
-    val compose = createComposeRule()
+    @get:Rule val compose = createComposeRule()
 
     @Test
     fun `text verb renders the string`() {
@@ -29,8 +28,14 @@ class DslRendererTest {
     @Test
     fun `column stacks children vertically`() {
         val p = plugin {
-            id = "test"; name = "T"
-            ui { column { text("first"); text("second") } }
+            id = "test"
+            name = "T"
+            ui {
+                column {
+                    text("first")
+                    text("second")
+                }
+            }
         }
         compose.setContent { p.content(Modifier.fillMaxSize()) }
         compose.onNodeWithText("first").assertExists()
@@ -40,8 +45,14 @@ class DslRendererTest {
     @Test
     fun `row places children side-by-side`() {
         val p = plugin {
-            id = "test"; name = "T"
-            ui { row { text("left"); text("right") } }
+            id = "test"
+            name = "T"
+            ui {
+                row {
+                    text("left")
+                    text("right")
+                }
+            }
         }
         compose.setContent { p.content(Modifier.fillMaxSize()) }
         compose.onNodeWithText("left").assertExists()
@@ -52,7 +63,8 @@ class DslRendererTest {
     fun `list renders one composable per item`() {
         val items = listOf("apple", "banana", "cherry")
         val p = plugin {
-            id = "test"; name = "T"
+            id = "test"
+            name = "T"
             ui { list(items = items, key = { it }) { item -> text(item) } }
         }
         compose.setContent { p.content(Modifier.fillMaxSize()) }
@@ -64,12 +76,9 @@ class DslRendererTest {
     @Test
     fun `clickable subtree renders without throwing`() {
         val p = plugin {
-            id = "test"; name = "T"
-            ui {
-                clickable(onClick = { }) {
-                    text("click me")
-                }
-            }
+            id = "test"
+            name = "T"
+            ui { clickable(onClick = {}) { text("click me") } }
         }
         compose.setContent { p.content(Modifier.fillMaxSize()) }
         compose.onNodeWithText("click me").assertExists()
@@ -79,7 +88,8 @@ class DslRendererTest {
     fun `textField shows placeholder when state is empty`() {
         val state = stateOf("")
         val p = plugin {
-            id = "test"; name = "T"
+            id = "test"
+            name = "T"
             ui { textField(state = state, placeholder = "type here") }
         }
         compose.setContent { p.content(Modifier.fillMaxSize()) }
@@ -90,7 +100,8 @@ class DslRendererTest {
     fun `textField hides placeholder when state has content`() {
         val state = stateOf("typed")
         val p = plugin {
-            id = "test"; name = "T"
+            id = "test"
+            name = "T"
             ui { textField(state = state, placeholder = "ph") }
         }
         compose.setContent { p.content(Modifier.fillMaxSize()) }
@@ -102,7 +113,8 @@ class DslRendererTest {
     fun `tabs renders master content by default`() {
         val ctrl = tabController("Master")
         val p = plugin {
-            id = "test"; name = "T"
+            id = "test"
+            name = "T"
             ui {
                 tabs(
                     controller = ctrl,
@@ -120,7 +132,8 @@ class DslRendererTest {
     fun `tabs switches to detail content when tab is opened`() {
         val ctrl = tabController("Master")
         val p = plugin {
-            id = "test"; name = "T"
+            id = "test"
+            name = "T"
             ui {
                 tabs(
                     controller = ctrl,
@@ -139,8 +152,9 @@ class DslRendererTest {
     @Test
     fun `button renders its label`() {
         val p = plugin {
-            id = "test"; name = "T"
-            ui { button(label = "Click", onClick = { }) }
+            id = "test"
+            name = "T"
+            ui { button(label = "Click", onClick = {}) }
         }
         compose.setContent { p.content(Modifier.fillMaxSize()) }
         compose.onNodeWithText("Click").assertExists()
@@ -149,7 +163,8 @@ class DslRendererTest {
     @Test
     fun `centered renders its children`() {
         val p = plugin {
-            id = "test"; name = "T"
+            id = "test"
+            name = "T"
             ui { centered { text("middle") } }
         }
         compose.setContent { p.content(Modifier.fillMaxSize()) }
@@ -159,10 +174,9 @@ class DslRendererTest {
     @Test
     fun `theme override is applied without breaking rendering`() {
         val p = plugin {
-            id = "test"; name = "T"
-            theme {
-                text = TextStyle(fontSize = 20.sp, color = Color.Red)
-            }
+            id = "test"
+            name = "T"
+            theme { text = TextStyle(fontSize = 20.sp, color = Color.Red) }
             ui { text("themed") }
         }
         compose.setContent { p.content(Modifier.fillMaxSize()) }

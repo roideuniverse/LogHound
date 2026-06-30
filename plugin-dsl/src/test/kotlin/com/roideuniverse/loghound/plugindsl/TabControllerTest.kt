@@ -1,9 +1,9 @@
 package com.roideuniverse.loghound.plugindsl
 
-import org.junit.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import org.junit.Test
 
 class TabControllerTest {
 

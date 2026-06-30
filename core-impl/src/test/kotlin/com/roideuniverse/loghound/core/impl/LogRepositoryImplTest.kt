@@ -5,6 +5,10 @@ import com.roideuniverse.loghound.core.LogFilter
 import com.roideuniverse.loghound.core.LogPriority
 import com.roideuniverse.loghound.database.LogDataStore
 import com.roideuniverse.loghound.database.createLogDataStore
+import java.io.File
+import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
+import kotlin.test.assertTrue
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
@@ -16,10 +20,6 @@ import kotlinx.coroutines.test.runTest
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
-import java.io.File
-import kotlin.test.assertEquals
-import kotlin.test.assertFailsWith
-import kotlin.test.assertTrue
 
 class LogRepositoryImplTest {
 
@@ -91,13 +91,11 @@ class LogRepositoryImplTest {
                 entry(message = "with crash", priority = LogPriority.Error),
                 entry(message = "no issue", priority = LogPriority.Info),
                 entry(message = "another crash", priority = LogPriority.Warn),
-            ),
+            )
         )
 
-        val onlyErrors = repo.query(
-            filter = LogFilter(minPriority = LogPriority.Error),
-            limit = 100,
-        ).entries
+        val onlyErrors =
+            repo.query(filter = LogFilter(minPriority = LogPriority.Error), limit = 100).entries
         assertEquals(1, onlyErrors.size)
         assertEquals("with crash", onlyErrors.single().message)
     }
@@ -113,10 +111,10 @@ class LogRepositoryImplTest {
         // …then 600 unrelated entries on top of it.
         repo.append(List(600) { i -> entry(message = "noise-$i") })
 
-        val matches = repo.query(
-            filter = LogFilter(textSearch = "RARE-MARKER-SINGLETON"),
-            limit = 500,
-        ).entries
+        val matches =
+            repo
+                .query(filter = LogFilter(textSearch = "RARE-MARKER-SINGLETON"), limit = 500)
+                .entries
 
         assertEquals(1, matches.size)
         assertEquals("RARE-MARKER-SINGLETON", matches.single().message)
@@ -134,10 +132,8 @@ class LogRepositoryImplTest {
             repo.append(List(50) { i -> entry(message = "filler-${chunk}-$i") })
         }
 
-        val matches = repo.query(
-            filter = LogFilter(textSearch = "RARE-MARKER-DEEP"),
-            limit = 10,
-        ).entries
+        val matches =
+            repo.query(filter = LogFilter(textSearch = "RARE-MARKER-DEEP"), limit = 10).entries
 
         assertEquals(1, matches.size)
         assertEquals("RARE-MARKER-DEEP", matches.single().message)
@@ -187,9 +183,14 @@ class LogRepositoryImplTest {
     @Test
     fun count_with_filter_returns_matching_rows() = runTest {
         val (_, repo) = newRepo()
-        repo.append(List(20) { i ->
-            entry(message = "m-$i", priority = if (i % 4 == 0) LogPriority.Error else LogPriority.Info)
-        })
+        repo.append(
+            List(20) { i ->
+                entry(
+                    message = "m-$i",
+                    priority = if (i % 4 == 0) LogPriority.Error else LogPriority.Info,
+                )
+            }
+        )
         // Indexes 0,4,8,12,16 → 5 errors out of 20
         val errors = repo.count(LogFilter(minPriority = LogPriority.Error))
         assertEquals(5L, errors)
@@ -197,34 +198,36 @@ class LogRepositoryImplTest {
 
     @OptIn(ExperimentalCoroutinesApi::class)
     @Test
-    fun ingested_emits_each_appended_batch() = runTest(UnconfinedTestDispatcher()) {
-        val (_, repo) = newRepo()
-        coroutineScope {
-            // UnconfinedTestDispatcher: collector attaches synchronously here, before
-            // append() runs. SharedFlow has no replay so subscriber order matters.
-            val collected = async { repo.ingested.take(2).toList() }
-            repo.append(listOf(entry(message = "first"), entry(message = "second")))
-            repo.append(listOf(entry(message = "third")))
-            val batches = collected.await()
-            assertEquals(2, batches.size)
-            assertEquals(listOf("first", "second"), batches[0].map { it.message })
-            assertEquals(listOf("third"), batches[1].map { it.message })
+    fun ingested_emits_each_appended_batch() =
+        runTest(UnconfinedTestDispatcher()) {
+            val (_, repo) = newRepo()
+            coroutineScope {
+                // UnconfinedTestDispatcher: collector attaches synchronously here, before
+                // append() runs. SharedFlow has no replay so subscriber order matters.
+                val collected = async { repo.ingested.take(2).toList() }
+                repo.append(listOf(entry(message = "first"), entry(message = "second")))
+                repo.append(listOf(entry(message = "third")))
+                val batches = collected.await()
+                assertEquals(2, batches.size)
+                assertEquals(listOf("first", "second"), batches[0].map { it.message })
+                assertEquals(listOf("third"), batches[1].map { it.message })
+            }
         }
-    }
 
     @OptIn(ExperimentalCoroutinesApi::class)
     @Test
-    fun ingested_does_not_replay_history() = runTest(UnconfinedTestDispatcher()) {
-        val (_, repo) = newRepo()
-        repo.append(listOf(entry(message = "before-subscription")))
+    fun ingested_does_not_replay_history() =
+        runTest(UnconfinedTestDispatcher()) {
+            val (_, repo) = newRepo()
+            repo.append(listOf(entry(message = "before-subscription")))
 
-        coroutineScope {
-            val collected = async { repo.ingested.first() }
-            repo.append(listOf(entry(message = "after-subscription")))
-            val batch = collected.await()
-            assertEquals(listOf("after-subscription"), batch.map { it.message })
+            coroutineScope {
+                val collected = async { repo.ingested.first() }
+                repo.append(listOf(entry(message = "after-subscription")))
+                val batch = collected.await()
+                assertEquals(listOf("after-subscription"), batch.map { it.message })
+            }
         }
-    }
 
     @Test
     fun append_of_empty_batch_does_not_emit_or_persist() = runTest {

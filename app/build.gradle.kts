@@ -27,9 +27,7 @@ kotlin {
             implementation(compose.ui)
             implementation(libs.kotlinx.coroutinesCore)
         }
-        commonTest.dependencies {
-            implementation(libs.kotlin.test)
-        }
+        commonTest.dependencies { implementation(libs.kotlin.test) }
         jvmMain.dependencies {
             implementation(compose.desktop.currentOs)
             implementation(libs.kotlinx.coroutinesSwing)
@@ -54,9 +52,7 @@ compose.desktop {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
             packageName = "LogHound"
             packageVersion = "1.0.0"
-            macOS {
-                bundleID = "com.roideuniverse.loghound"
-            }
+            macOS { bundleID = "com.roideuniverse.loghound" }
         }
     }
 }

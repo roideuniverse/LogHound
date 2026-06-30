@@ -25,14 +25,15 @@ data class AppSettings(
     val wordWrap: Boolean = true,
     val timestampFormat: TimestampFormat = TimestampFormat.Full,
 ) {
-    fun toDisplaySettings() = DisplaySettings(
-        density = density,
-        fontSize = fontSize,
-        showPid = showPid,
-        zebraRows = zebraRows,
-        wordWrap = wordWrap,
-        timestampFormat = timestampFormat,
-    )
+    fun toDisplaySettings() =
+        DisplaySettings(
+            density = density,
+            fontSize = fontSize,
+            showPid = showPid,
+            zebraRows = zebraRows,
+            wordWrap = wordWrap,
+            timestampFormat = timestampFormat,
+        )
 }
 
 val LocalAppSettings = staticCompositionLocalOf { AppSettings() }
@@ -45,26 +46,28 @@ object AppSettingsStore {
         }
 
     fun load(): AppSettings {
-        val props = try {
-            if (!configFile.isFile) return AppSettings()
-            Properties().apply { configFile.inputStream().use { load(it) } }
-        } catch (_: Exception) {
-            return AppSettings()
-        }
+        val props =
+            try {
+                if (!configFile.isFile) return AppSettings()
+                Properties().apply { configFile.inputStream().use { load(it) } }
+            } catch (_: Exception) {
+                return AppSettings()
+            }
         return AppSettings(
-            theme = props["ui.theme"]?.let { id ->
-                AppTheme.entries.firstOrNull { it.name == id }
-            } ?: AppTheme.Light,
-            density = props["ui.density"]?.let { id ->
-                Density.entries.firstOrNull { it.name == id }
-            } ?: Density.Compact,
+            theme =
+                props["ui.theme"]?.let { id -> AppTheme.entries.firstOrNull { it.name == id } }
+                    ?: AppTheme.Light,
+            density =
+                props["ui.density"]?.let { id -> Density.entries.firstOrNull { it.name == id } }
+                    ?: Density.Compact,
             fontSize = (props["ui.fontSize"] as? String)?.toIntOrNull()?.coerceIn(10, 18) ?: 12,
             showPid = (props["ui.showPid"] as? String)?.toBooleanStrictOrNull() ?: true,
             zebraRows = (props["ui.zebraRows"] as? String)?.toBooleanStrictOrNull() ?: false,
             wordWrap = (props["ui.wordWrap"] as? String)?.toBooleanStrictOrNull() ?: true,
-            timestampFormat = props["ui.timestampFormat"]?.let { id ->
-                TimestampFormat.entries.firstOrNull { it.name == id }
-            } ?: TimestampFormat.Full,
+            timestampFormat =
+                props["ui.timestampFormat"]?.let { id ->
+                    TimestampFormat.entries.firstOrNull { it.name == id }
+                } ?: TimestampFormat.Full,
         )
     }
 

@@ -13,16 +13,12 @@ plugin {
     val recent = stateOf<List<LogEntry>>(emptyList())
 
     data { repo ->
-        repo.ingested.collect { batch ->
-            recent.value = (recent.value + batch).takeLast(50)
-        }
+        repo.ingested.collect { batch -> recent.value = (recent.value + batch).takeLast(50) }
     }
 
     ui {
         column {
-            section {
-                text("Hello, LogHound — last ${recent.value.size} log lines")
-            }
+            section { text("Hello, LogHound — last ${recent.value.size} log lines") }
             divider()
             list(items = recent.value, key = { it.id }) { entry ->
                 text("${entry.tag}: ${entry.message.take(120)}")

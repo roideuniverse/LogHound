@@ -8,17 +8,15 @@ import java.util.Properties
  *
  * Keys (both optional):
  * - `font.ui.path` — absolute path (or `~/...`) to a TTF/OTF used as the UI typeface.
- * - `font.mono.path` — absolute path (or `~/...`) to a TTF/OTF used as the monospace
- *   typeface for log rows.
+ * - `font.mono.path` — absolute path (or `~/...`) to a TTF/OTF used as the monospace typeface for
+ *   log rows.
  *
- * If a key is present but the file can't be read, the override is dropped with
- * a warning on `stderr` and the bundled font is used instead — no crash, no
- * silent partial failure.
+ * If a key is present but the file can't be read, the override is dropped with a warning on
+ * `stderr` and the bundled font is used instead — no crash, no silent partial failure.
  *
- * The config file is read once at process start. Overrides land before any
- * Compose composition reads `LogHoundDesign.Fonts`, so font swaps take effect
- * on the next app launch rather than at runtime — which is the right shape
- * for a typography choice anyway.
+ * The config file is read once at process start. Overrides land before any Compose composition
+ * reads `LogHoundDesign.Fonts`, so font swaps take effect on the next app launch rather than at
+ * runtime — which is the right shape for a typography choice anyway.
  */
 internal object UserFontConfig {
     const val KEY_UI = "font.ui.path"
@@ -30,8 +28,7 @@ internal object UserFontConfig {
 
     private val properties: Properties? by lazy { defaultConfigFile()?.let(::loadProperties) }
 
-    private fun resolveOverride(key: String): File? =
-        parseOverride(properties, key, ::expandTilde)
+    private fun resolveOverride(key: String): File? = parseOverride(properties, key, ::expandTilde)
 
     private fun defaultConfigFile(): File? {
         val home = System.getProperty("user.home") ?: return null
@@ -44,21 +41,19 @@ internal object UserFontConfig {
         return try {
             Properties().apply { file.inputStream().use { load(it) } }
         } catch (ex: Exception) {
-            System.err.println("LogHound: failed to read $file (${ex.message}); using bundled fonts.")
+            System.err.println(
+                "LogHound: failed to read $file (${ex.message}); using bundled fonts."
+            )
             null
         }
     }
 
     /**
-     * Resolves one override key to a readable file, applying tilde expansion
-     * via [expand]. Returns `null` if the key is missing, blank, or points at
-     * a path we can't read (writes a warning to stderr in the unreadable case).
+     * Resolves one override key to a readable file, applying tilde expansion via [expand]. Returns
+     * `null` if the key is missing, blank, or points at a path we can't read (writes a warning to
+     * stderr in the unreadable case).
      */
-    internal fun parseOverride(
-        props: Properties?,
-        key: String,
-        expand: (String) -> String,
-    ): File? {
+    internal fun parseOverride(props: Properties?, key: String, expand: (String) -> String): File? {
         if (props == null) return null
         val raw = props.getProperty(key)?.trim().orEmpty()
         if (raw.isEmpty()) return null
