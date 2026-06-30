@@ -39,6 +39,7 @@ import com.roideuniverse.loghound.core.DeviceId
 import com.roideuniverse.loghound.core.LogRepository
 import com.roideuniverse.loghound.core.UIPlugin
 import com.roideuniverse.loghound.design.LocalActiveDevice
+import com.roideuniverse.loghound.design.LocalDisplaySettings
 import com.roideuniverse.loghound.design.LocalLogHoundColors
 import com.roideuniverse.loghound.design.LogHoundDesign
 import com.roideuniverse.loghound.plugins.sessions.SessionsManager
@@ -64,6 +65,7 @@ fun App(
 
     CompositionLocalProvider(
         LocalLogHoundColors provides settings.theme.colors,
+        LocalDisplaySettings provides settings.toDisplaySettings(),
         LocalAppSettings provides settings,
     ) {
         val colors = LocalLogHoundColors.current

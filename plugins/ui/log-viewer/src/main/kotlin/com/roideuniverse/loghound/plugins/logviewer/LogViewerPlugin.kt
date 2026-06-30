@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollbarAdapter
 import androidx.compose.foundation.rememberScrollState
@@ -61,14 +62,21 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
 import com.roideuniverse.loghound.core.LogEntry
 import com.roideuniverse.loghound.core.LogFilter
 import com.roideuniverse.loghound.core.LogRepository
 import com.roideuniverse.loghound.core.UIPlugin
+import com.roideuniverse.loghound.design.Density
+import com.roideuniverse.loghound.design.DisplaySettings
 import com.roideuniverse.loghound.design.LocalActiveDevice
+import com.roideuniverse.loghound.design.LocalDisplaySettings
 import com.roideuniverse.loghound.design.LocalLogHoundColors
 import com.roideuniverse.loghound.design.LogHoundDesign
 import com.roideuniverse.loghound.design.PriorityBadge
+import com.roideuniverse.loghound.design.TimestampFormat
 import dev.zacsweers.metro.Inject
 
 class LogViewerPlugin @Inject constructor(
@@ -163,6 +171,8 @@ class LogViewerPlugin @Inject constructor(
         }
 
         val colors = LocalLogHoundColors.current
+        val display = LocalDisplaySettings.current
+        val searchText = remember(filter) { filter.textSearch }
         Column(modifier = modifier.fillMaxSize()) {
             PackageUidLookupBar()
             HorizontalDivider(color = colors.border)
@@ -194,10 +204,13 @@ class LogViewerPlugin @Inject constructor(
                         if (loadingOlder) {
                             item(key = "loadingOlder") { LoadingOlderRow() }
                         }
-                        items(items = entries, key = { it.id }) { entry ->
+                        itemsIndexed(items = entries, key = { _, e -> e.id }) { index, entry ->
                             LogRowWithExpansion(
                                 entry = entry,
                                 expanded = entry.id == expandedEntryId,
+                                index = index,
+                                display = display,
+                                searchText = searchText,
                                 onToggle = {
                                     expandedEntryId = if (expandedEntryId == entry.id) null else entry.id
                                 },
@@ -257,13 +270,21 @@ private fun LoadingOlderRow() {
 }
 
 @Composable
-private fun LogRowWithExpansion(entry: LogEntry, expanded: Boolean, onToggle: () -> Unit) {
+private fun LogRowWithExpansion(
+    entry: LogEntry,
+    expanded: Boolean,
+    index: Int,
+    display: DisplaySettings,
+    searchText: String?,
+    onToggle: () -> Unit,
+) {
     val colors = LocalLogHoundColors.current
     val interactionSource = remember { MutableInteractionSource() }
     val isHovered by interactionSource.collectIsHoveredAsState()
+    val zebraBase = if (display.zebraRows && index % 2 == 1) colors.hoverBackground else colors.background
     val rowBg = when {
         expanded || isHovered -> colors.hoverBackground
-        else -> colors.background
+        else -> zebraBase
     }
     Column(
         modifier = Modifier
@@ -276,7 +297,7 @@ private fun LogRowWithExpansion(entry: LogEntry, expanded: Boolean, onToggle: ()
                 onClick = onToggle,
             ),
     ) {
-        LogRow(entry)
+        LogRow(entry, display, searchText)
         if (expanded) {
             ExpandedDetail(entry)
         }
@@ -304,23 +325,35 @@ private fun ExpandedDetail(entry: LogEntry) {
 }
 
 @Composable
-private fun LogRow(entry: LogEntry) {
+private fun LogRow(entry: LogEntry, display: DisplaySettings, searchText: String?) {
     val colors = LocalLogHoundColors.current
-    val bodyStyle = LogHoundDesign.Text.Row.copy(color = colors.onSurface)
-    val metaStyle = LogHoundDesign.Text.Row.copy(fontSize = 11.sp, color = colors.secondary)
-    val tagStyle = LogHoundDesign.Text.Row.copy(fontWeight = FontWeight.Medium, color = colors.onSurface)
+    val fs = display.fontSize.sp
+    val lh = (display.fontSize + if (display.density == Density.Comfortable) 10 else 8).sp
+    val padV = if (display.density == Density.Comfortable) 7.dp else 3.dp
+    val bodyStyle = LogHoundDesign.Text.Row.copy(color = colors.onSurface, fontSize = fs, lineHeight = lh)
+    val metaStyle = bodyStyle.copy(fontSize = (display.fontSize - 1).sp, color = colors.secondary)
+    val tagStyle = bodyStyle.copy(fontWeight = FontWeight.Medium)
+
+    val timestamp = when (display.timestampFormat) {
+        TimestampFormat.Full    -> entry.timestamp
+        TimestampFormat.Short   -> entry.timestamp.substringAfter(" ").ifEmpty { entry.timestamp }
+        TimestampFormat.Seconds -> entry.timestamp.substringBefore(".")
+    }
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 8.dp, vertical = 2.dp)
+            .padding(horizontal = 8.dp, vertical = padV)
             .testTag(TestTags.LOG_ROW),
         verticalAlignment = Alignment.Top,
     ) {
         PriorityBadge(entry.priority, modifier = Modifier.padding(top = 1.dp))
         Spacer(Modifier.width(8.dp))
-        Text(entry.timestamp, style = bodyStyle)
-        Spacer(Modifier.width(8.dp))
-        Text("${entry.pid} ${entry.tid}", style = metaStyle, modifier = Modifier.padding(top = 1.dp))
+        Text(timestamp, style = metaStyle, modifier = Modifier.padding(top = 1.dp))
+        if (display.showPid) {
+            Spacer(Modifier.width(8.dp))
+            Text("${entry.pid} ${entry.tid}", style = metaStyle, modifier = Modifier.padding(top = 1.dp))
+        }
         Spacer(Modifier.width(12.dp))
         Text(
             entry.tag,
@@ -330,8 +363,44 @@ private fun LogRow(entry: LogEntry) {
             modifier = Modifier.width(120.dp),
         )
         Spacer(Modifier.width(8.dp))
-        Text(entry.message, style = bodyStyle, modifier = Modifier.weight(1f))
+        HighlightedText(
+            text = entry.message,
+            search = searchText,
+            style = bodyStyle,
+            softWrap = display.wordWrap,
+            modifier = Modifier.weight(1f),
+        )
     }
+}
+
+@Composable
+private fun HighlightedText(
+    text: String,
+    search: String?,
+    style: TextStyle,
+    softWrap: Boolean = true,
+    modifier: Modifier = Modifier,
+) {
+    if (search.isNullOrEmpty()) {
+        Text(text, style = style, softWrap = softWrap, modifier = modifier)
+        return
+    }
+    val colors = LocalLogHoundColors.current
+    val annotated = buildAnnotatedString {
+        var pos = 0
+        val lower = text.lowercase()
+        val needle = search.lowercase()
+        while (pos <= text.length) {
+            val hit = lower.indexOf(needle, pos)
+            if (hit == -1) { append(text.substring(pos)); break }
+            append(text.substring(pos, hit))
+            withStyle(SpanStyle(background = colors.hlBackground, color = colors.hlForeground)) {
+                append(text.substring(hit, hit + search.length))
+            }
+            pos = hit + search.length
+        }
+    }
+    Text(annotated, style = style, softWrap = softWrap, modifier = modifier)
 }
 
 @Composable

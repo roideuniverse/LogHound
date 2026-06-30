@@ -32,8 +32,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.roideuniverse.loghound.design.Density
 import com.roideuniverse.loghound.design.LocalLogHoundColors
 import com.roideuniverse.loghound.design.LogHoundDesign
+import com.roideuniverse.loghound.design.TimestampFormat
 
 private enum class SettingsCategory(val label: String) {
     Appearance("Appearance"),

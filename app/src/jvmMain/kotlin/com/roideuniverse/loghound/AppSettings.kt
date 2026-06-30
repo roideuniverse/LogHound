@@ -1,8 +1,11 @@
 package com.roideuniverse.loghound
 
 import androidx.compose.runtime.staticCompositionLocalOf
+import com.roideuniverse.loghound.design.Density
+import com.roideuniverse.loghound.design.DisplaySettings
 import com.roideuniverse.loghound.design.LogHoundColors
 import com.roideuniverse.loghound.design.LogHoundThemes
+import com.roideuniverse.loghound.design.TimestampFormat
 import java.io.File
 import java.util.Properties
 
@@ -13,14 +16,6 @@ enum class AppTheme(val displayName: String, val colors: LogHoundColors) {
     HighContrast("High Contrast", LogHoundThemes.HighContrast),
 }
 
-enum class Density { Compact, Comfortable }
-
-enum class TimestampFormat(val displayName: String) {
-    Full("Full"),
-    Short("Short"),
-    Seconds("Seconds"),
-}
-
 data class AppSettings(
     val theme: AppTheme = AppTheme.Light,
     val density: Density = Density.Compact,
@@ -29,9 +24,17 @@ data class AppSettings(
     val zebraRows: Boolean = false,
     val wordWrap: Boolean = true,
     val timestampFormat: TimestampFormat = TimestampFormat.Full,
-)
+) {
+    fun toDisplaySettings() = DisplaySettings(
+        density = density,
+        fontSize = fontSize,
+        showPid = showPid,
+        zebraRows = zebraRows,
+        wordWrap = wordWrap,
+        timestampFormat = timestampFormat,
+    )
+}
 
-/** Active display settings injected by the window shell. Plugins read this to honour density, font size, etc. */
 val LocalAppSettings = staticCompositionLocalOf { AppSettings() }
 
 object AppSettingsStore {
@@ -67,10 +70,8 @@ object AppSettingsStore {
 
     fun save(settings: AppSettings) {
         try {
-            // Read existing file to preserve unknown keys (e.g. font overrides).
             val props = Properties()
             if (configFile.isFile) configFile.inputStream().use { props.load(it) }
-
             props["ui.theme"] = settings.theme.name
             props["ui.density"] = settings.density.name
             props["ui.fontSize"] = settings.fontSize.toString()
@@ -78,7 +79,6 @@ object AppSettingsStore {
             props["ui.zebraRows"] = settings.zebraRows.toString()
             props["ui.wordWrap"] = settings.wordWrap.toString()
             props["ui.timestampFormat"] = settings.timestampFormat.name
-
             configFile.parentFile?.mkdirs()
             configFile.outputStream().use { props.store(it, null) }
         } catch (_: Exception) {
