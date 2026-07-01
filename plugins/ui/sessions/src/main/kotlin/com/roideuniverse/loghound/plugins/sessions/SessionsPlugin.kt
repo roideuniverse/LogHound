@@ -1,6 +1,7 @@
 package com.roideuniverse.loghound.plugins.sessions
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -27,6 +28,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.roideuniverse.loghound.core.UIPlugin
 import com.roideuniverse.loghound.design.LocalLogHoundColors
 import com.roideuniverse.loghound.design.LogHoundDesign
@@ -166,22 +168,79 @@ private fun CurrentSessionCard(name: String, startedAt: Long, onEndAndNew: () ->
 @Composable
 private fun ArchivedSessionRow(session: Session) {
     val colors = LocalLogHoundColors.current
+    val duration =
+        session.endedAt?.let { end ->
+            val mins = ((end - session.startedAt) / 60_000).toInt()
+            if (mins < 60) "${mins}m" else "${mins / 60}h ${mins % 60}m"
+        }
+    val dateRange =
+        if (session.endedAt != null)
+            "${formatTimestamp(session.startedAt)} → ${formatTimestamp(session.endedAt)}"
+        else formatTimestamp(session.startedAt)
     Row(
         modifier =
-            Modifier.fillMaxWidth().padding(vertical = 8.dp).testTag(SessionsTestTags.ARCHIVED_ROW),
+            Modifier.fillMaxWidth()
+                .padding(horizontal = 18.dp, vertical = 13.dp)
+                .testTag(SessionsTestTags.ARCHIVED_ROW),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween,
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         Column(modifier = Modifier.weight(1f)) {
-            Text(session.name, style = LogHoundDesign.Text.Tab.copy(color = colors.onSurface))
-            Spacer(Modifier.height(2.dp))
             Text(
-                "${formatTimestamp(session.startedAt)} · ${session.lineCount} lines",
+                session.name,
+                style =
+                    LogHoundDesign.Text.Tab.copy(
+                        fontWeight = FontWeight.SemiBold,
+                        color = colors.onSurface,
+                        fontSize = 14.sp,
+                    ),
+            )
+            Spacer(Modifier.height(3.dp))
+            Text(
+                if (duration != null) "$dateRange · $duration" else dateRange,
                 style = LogHoundDesign.Text.Status.copy(color = colors.secondary),
             )
         }
+        Text(
+            formatLineCount(session.lineCount),
+            style =
+                LogHoundDesign.Text.Row.copy(
+                    color = colors.onSurface,
+                    fontWeight = FontWeight.Medium,
+                    fontSize = 13.sp,
+                ),
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            ArchiveActionButton("Open", colors.primary, colors.accentSoft, colors.border)
+            ArchiveActionButton("Export", colors.secondary, colors.input, colors.border)
+        }
     }
 }
+
+@Composable
+private fun ArchiveActionButton(
+    label: String,
+    textColor: androidx.compose.ui.graphics.Color,
+    bg: androidx.compose.ui.graphics.Color,
+    borderColor: androidx.compose.ui.graphics.Color,
+) {
+    Text(
+        label,
+        style = LogHoundDesign.Text.Status.copy(color = textColor, fontWeight = FontWeight.Medium),
+        modifier =
+            Modifier.clip(RoundedCornerShape(5.dp))
+                .background(bg)
+                .border(1.dp, borderColor, RoundedCornerShape(5.dp))
+                .padding(horizontal = 10.dp, vertical = 4.dp),
+    )
+}
+
+private fun formatLineCount(count: Long): String =
+    when {
+        count >= 1_000_000 -> "${count / 1_000_000}.${(count % 1_000_000) / 100_000}M"
+        count >= 1_000 -> "${count / 1_000}k"
+        else -> count.toString()
+    }
 
 private fun formatTimestamp(millis: Long): String {
     val fmt = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.US)

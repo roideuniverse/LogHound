@@ -27,6 +27,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.rememberScrollbarAdapter
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.selection.SelectionContainer
@@ -42,6 +43,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
@@ -67,6 +69,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
+import com.roideuniverse.loghound.core.Device
+import com.roideuniverse.loghound.core.DeviceId
 import com.roideuniverse.loghound.core.LogEntry
 import com.roideuniverse.loghound.core.LogFilter
 import com.roideuniverse.loghound.core.LogRepository
@@ -74,6 +78,7 @@ import com.roideuniverse.loghound.core.UIPlugin
 import com.roideuniverse.loghound.design.Density
 import com.roideuniverse.loghound.design.DisplaySettings
 import com.roideuniverse.loghound.design.LocalActiveDevice
+import com.roideuniverse.loghound.design.LocalDeviceColorMap
 import com.roideuniverse.loghound.design.LocalDisplaySettings
 import com.roideuniverse.loghound.design.LocalLogHoundColors
 import com.roideuniverse.loghound.design.LogHoundDesign
@@ -91,7 +96,12 @@ class LogViewerPlugin @Inject constructor(private val repository: LogRepository)
     override fun content(modifier: Modifier) {
         var queryText by remember { mutableStateOf("") }
         var tagFilters by remember { mutableStateOf<List<TagFilter>>(emptyList()) }
-        val activeDevice = LocalActiveDevice.current
+        val globalActiveDevice = LocalActiveDevice.current
+        // Sub-tab device selection — local to the Log Viewer, overrides global scope.
+        var subDevice by remember { mutableStateOf<DeviceId?>(null) }
+        val connectedDevices by repository.devices.collectAsState()
+        val activeDevice = subDevice ?: globalActiveDevice
+        val isAll = activeDevice == null
         val parsedFilter: LogFilter = remember(queryText) { FilterQueryParser.parse(queryText) }
         val filter: LogFilter =
             remember(parsedFilter, activeDevice) {
@@ -211,6 +221,13 @@ class LogViewerPlugin @Inject constructor(private val repository: LogRepository)
                 onRemoveTag = { tag -> tagFilters = tagFilters.filter { it.tag != tag } },
                 availableTags = availableTags,
             )
+            // Device sub-tab strip
+            DeviceSubTabStrip(
+                devices = connectedDevices,
+                activeSubDevice = subDevice,
+                onSelect = { subDevice = it },
+                visibleCount = entries.size,
+            )
             HorizontalDivider(color = colors.border)
             Box(modifier = Modifier.fillMaxSize()) {
                 SelectionContainer(modifier = Modifier.fillMaxSize()) {
@@ -226,6 +243,7 @@ class LogViewerPlugin @Inject constructor(private val repository: LogRepository)
                                 entry = entry,
                                 expanded = entry.id == expandedEntryId,
                                 index = index,
+                                isAll = isAll,
                                 display = display,
                                 searchText = searchText,
                                 onToggle = {
@@ -272,6 +290,85 @@ private const val LOAD_OLDER_PAGE_SIZE = 500
 private const val MAX_IN_MEMORY = 10_000
 
 @Composable
+private fun DeviceSubTabStrip(
+    devices: Set<Device>,
+    activeSubDevice: DeviceId?,
+    onSelect: (DeviceId?) -> Unit,
+    visibleCount: Int,
+) {
+    val colors = LocalLogHoundColors.current
+    val deviceColorMap = LocalDeviceColorMap.current
+    val orderedDevices = remember(devices) { devices.sortedBy { it.id.value } }
+    HorizontalDivider(color = colors.border)
+    Row(
+        modifier = Modifier.fillMaxWidth().height(36.dp).padding(horizontal = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        // "All devices" tab
+        DeviceSubTab(
+            label = "All devices",
+            dotColor = null,
+            active = activeSubDevice == null,
+            onClick = { onSelect(null) },
+        )
+        orderedDevices.forEach { device ->
+            DeviceSubTab(
+                label = device.label,
+                dotColor = deviceColorMap[device.id.value],
+                active = activeSubDevice == device.id,
+                onClick = { onSelect(device.id) },
+            )
+        }
+        Spacer(Modifier.weight(1f))
+        Text(
+            "$visibleCount lines",
+            style =
+                LogHoundDesign.Text.Status.copy(
+                    color = colors.secondary,
+                    fontWeight = FontWeight.Medium,
+                ),
+        )
+    }
+}
+
+@Composable
+private fun DeviceSubTab(
+    label: String,
+    dotColor: androidx.compose.ui.graphics.Color?,
+    active: Boolean,
+    onClick: () -> Unit,
+) {
+    val colors = LocalLogHoundColors.current
+    Row(
+        modifier =
+            Modifier.height(26.dp)
+                .clip(RoundedCornerShape(6.dp))
+                .background(
+                    if (active) colors.pressedBackground
+                    else androidx.compose.ui.graphics.Color.Transparent
+                )
+                .clickable(onClick = onClick)
+                .padding(horizontal = 11.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        if (dotColor != null) {
+            Box(modifier = Modifier.size(6.dp).clip(CircleShape).background(dotColor))
+        }
+        Text(
+            label,
+            style =
+                LogHoundDesign.Text.Tab.copy(
+                    fontWeight = if (active) FontWeight.SemiBold else FontWeight.Normal,
+                    color = if (active) colors.onSurface else colors.secondary,
+                    fontSize = 13.sp,
+                ),
+        )
+    }
+}
+
+@Composable
 private fun LoadingOlderRow() {
     val colors = LocalLogHoundColors.current
     Row(
@@ -290,6 +387,7 @@ private fun LogRowWithExpansion(
     entry: LogEntry,
     expanded: Boolean,
     index: Int,
+    isAll: Boolean,
     display: DisplaySettings,
     searchText: String?,
     onToggle: () -> Unit,
@@ -315,7 +413,7 @@ private fun LogRowWithExpansion(
                     onClick = onToggle,
                 )
     ) {
-        LogRow(entry, display, searchText)
+        LogRow(entry, isAll, display, searchText)
         if (expanded) {
             ExpandedDetail(entry)
         }
@@ -343,8 +441,10 @@ private fun ExpandedDetail(entry: LogEntry) {
 }
 
 @Composable
-private fun LogRow(entry: LogEntry, display: DisplaySettings, searchText: String?) {
+private fun LogRow(entry: LogEntry, isAll: Boolean, display: DisplaySettings, searchText: String?) {
     val colors = LocalLogHoundColors.current
+    val deviceColorMap = LocalDeviceColorMap.current
+    val deviceColor = deviceColorMap[entry.deviceId.value]
     val fs = display.fontSize.sp
     val lh = (display.fontSize + if (display.density == Density.Comfortable) 10 else 8).sp
     val padV = if (display.density == Density.Comfortable) 7.dp else 3.dp
@@ -361,36 +461,80 @@ private fun LogRow(entry: LogEntry, display: DisplaySettings, searchText: String
         }
 
     Row(
-        modifier =
-            Modifier.fillMaxWidth()
-                .padding(horizontal = 8.dp, vertical = padV)
-                .testTag(TestTags.LOG_ROW),
+        modifier = Modifier.fillMaxWidth().testTag(TestTags.LOG_ROW),
         verticalAlignment = Alignment.Top,
     ) {
-        PriorityBadge(entry.priority, modifier = Modifier.padding(top = 1.dp, end = 10.dp))
-        Text(timestamp, style = metaStyle, modifier = Modifier.width(84.dp).padding(top = 1.dp))
-        if (display.showPid) {
-            Text(
-                "${entry.pid} ${entry.tid}",
-                style = metaStyle,
-                modifier = Modifier.width(88.dp).padding(top = 1.dp),
-            )
+        // 3dp device color stripe (visible in "All devices" view)
+        Box(
+            modifier =
+                Modifier.width(3.dp)
+                    .padding(vertical = padV / 2)
+                    .fillMaxHeight()
+                    .background(
+                        if (isAll && deviceColor != null) deviceColor
+                        else androidx.compose.ui.graphics.Color.Transparent
+                    )
+        )
+        Spacer(Modifier.width(11.dp))
+        // Device name chip (visible in "All devices" view)
+        if (isAll && deviceColor != null) {
+            val chipBg =
+                androidx.compose.ui.graphics.Color(
+                    (deviceColor.red * 255).toInt(),
+                    (deviceColor.green * 255).toInt(),
+                    (deviceColor.blue * 255).toInt(),
+                    (255 * 0.14f).toInt(),
+                )
+            Box(modifier = Modifier.width(76.dp).align(Alignment.CenterVertically)) {
+                Text(
+                    entry.deviceId.value.take(8),
+                    style =
+                        LogHoundDesign.Text.Row.copy(
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = deviceColor,
+                        ),
+                    modifier =
+                        Modifier.clip(RoundedCornerShape(3.dp))
+                            .background(chipBg)
+                            .padding(horizontal = 5.dp, vertical = 1.dp),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
         }
-        Text(
-            entry.tag,
-            style = tagStyle,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.width(128.dp),
-        )
-        Spacer(Modifier.width(8.dp))
-        HighlightedText(
-            text = entry.message,
-            search = searchText,
-            style = bodyStyle,
-            softWrap = display.wordWrap,
-            modifier = Modifier.weight(1f),
-        )
+        Column(modifier = Modifier.weight(1f).padding(top = padV, bottom = padV, end = 14.dp)) {
+            Row(verticalAlignment = Alignment.Top) {
+                PriorityBadge(entry.priority, modifier = Modifier.padding(top = 1.dp, end = 10.dp))
+                Text(
+                    timestamp,
+                    style = metaStyle,
+                    modifier = Modifier.width(84.dp).padding(top = 1.dp),
+                )
+                if (display.showPid) {
+                    Text(
+                        "${entry.pid} ${entry.tid}",
+                        style = metaStyle,
+                        modifier = Modifier.width(88.dp).padding(top = 1.dp),
+                    )
+                }
+                Text(
+                    entry.tag,
+                    style = tagStyle,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.width(128.dp),
+                )
+                Spacer(Modifier.width(8.dp))
+                HighlightedText(
+                    text = entry.message,
+                    search = searchText,
+                    style = bodyStyle,
+                    softWrap = display.wordWrap,
+                    modifier = Modifier.weight(1f),
+                )
+            }
+        }
     }
 }
 
@@ -633,14 +777,18 @@ private fun FilterChip(chip: TagFilter, onToggle: () -> Unit, onRemove: () -> Un
             Modifier.clip(RoundedCornerShape(3.dp))
                 .background(bgColor)
                 .clickable(onClick = onToggle)
-                .padding(start = 6.dp, end = 2.dp, top = 2.dp, bottom = 2.dp),
+                .padding(start = 5.dp, end = 2.dp, top = 2.dp, bottom = 2.dp),
         verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) {
+        // Leading colored dot
+        Box(
+            modifier = Modifier.size(6.dp).clip(CircleShape).background(fgColor.copy(alpha = 0.75f))
+        )
         Text(
             if (isExclude) "−${chip.tag}" else chip.tag,
             style = LogHoundDesign.Text.Status.copy(color = fgColor, fontWeight = FontWeight.Medium),
         )
-        Spacer(Modifier.width(2.dp))
         Text(
             "✕",
             style = LogHoundDesign.Text.Status.copy(color = fgColor),

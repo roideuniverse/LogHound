@@ -22,6 +22,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -48,6 +50,7 @@ import com.roideuniverse.loghound.core.DeviceId
 import com.roideuniverse.loghound.core.LogRepository
 import com.roideuniverse.loghound.core.UIPlugin
 import com.roideuniverse.loghound.design.LocalActiveDevice
+import com.roideuniverse.loghound.design.LocalDeviceColorMap
 import com.roideuniverse.loghound.design.LocalDisplaySettings
 import com.roideuniverse.loghound.design.LocalLogHoundColors
 import com.roideuniverse.loghound.design.LogHoundDesign
@@ -102,86 +105,98 @@ fun App(
                 activeDevice = null
             }
 
-            Box(modifier = Modifier.fillMaxSize().background(colors.background)) {
-                Column(modifier = Modifier.fillMaxSize()) {
-                    TitleBar(
-                        settings = settings,
-                        onOpenSettings = { settingsOpen = true },
-                        onCycleTheme = {
-                            val list = AppTheme.entries
-                            updateSettings(
-                                settings.copy(
-                                    theme = list[(list.indexOf(settings.theme) + 1) % list.size]
-                                )
-                            )
-                        },
-                    )
-                    HorizontalDivider(color = colors.border)
-                    Row(modifier = Modifier.weight(1f).fillMaxWidth()) {
-                        if (sidebarVisible) {
-                            AppSidebar(
-                                plugins = plugins,
-                                activePluginId = activePluginId,
-                                onSelect = { activePluginId = it.id },
-                            )
-                            VerticalDivider(color = colors.border)
+            // Build stable device-id → palette-color map for the whole session.
+            val deviceColorMap =
+                remember(detectedDevices, colors.devicePalette) {
+                    detectedDevices
+                        .sortedBy { it.id.value }
+                        .mapIndexed { i, dev ->
+                            dev.id.value to colors.devicePalette[i % colors.devicePalette.size]
                         }
-                        Box(
-                            modifier =
-                                Modifier.weight(1f).fillMaxHeight().background(colors.background)
-                        ) {
-                            val active = plugins.firstOrNull { it.id == activePluginId }
-                            if (active != null) {
-                                CompositionLocalProvider(LocalActiveDevice provides activeDevice) {
-                                    active.content(Modifier.fillMaxSize())
-                                }
-                            } else {
-                                Box(
-                                    modifier = Modifier.fillMaxSize(),
-                                    contentAlignment = Alignment.Center,
-                                ) {
-                                    Text(
-                                        "Pick a plugin from the sidebar.",
-                                        style =
-                                            LogHoundDesign.Text.Status.copy(
-                                                color = colors.secondary
-                                            ),
-                                    )
+                        .toMap()
+                }
+
+            CompositionLocalProvider(LocalDeviceColorMap provides deviceColorMap) {
+                Box(modifier = Modifier.fillMaxSize().background(colors.background)) {
+                    Column(modifier = Modifier.fillMaxSize()) {
+                        TitleBar(
+                            settings = settings,
+                            onOpenSettings = { settingsOpen = true },
+                            onSelectTheme = { updateSettings(settings.copy(theme = it)) },
+                        )
+                        HorizontalDivider(color = colors.border)
+                        Row(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                            if (sidebarVisible) {
+                                AppSidebar(
+                                    plugins = plugins,
+                                    activePluginId = activePluginId,
+                                    onSelect = { activePluginId = it.id },
+                                )
+                                VerticalDivider(color = colors.border)
+                            }
+                            Box(
+                                modifier =
+                                    Modifier.weight(1f)
+                                        .fillMaxHeight()
+                                        .background(colors.background)
+                            ) {
+                                val active = plugins.firstOrNull { it.id == activePluginId }
+                                if (active != null) {
+                                    CompositionLocalProvider(
+                                        LocalActiveDevice provides activeDevice
+                                    ) {
+                                        active.content(Modifier.fillMaxSize())
+                                    }
+                                } else {
+                                    Box(
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentAlignment = Alignment.Center,
+                                    ) {
+                                        Text(
+                                            "Pick a plugin from the sidebar.",
+                                            style =
+                                                LogHoundDesign.Text.Status.copy(
+                                                    color = colors.secondary
+                                                ),
+                                        )
+                                    }
                                 }
                             }
                         }
+                        HorizontalDivider(color = colors.border)
+                        StatusBar(
+                            devices = detectedDevices,
+                            activeDevice = activeDevice,
+                            onSelectDevice = { activeDevice = it },
+                            activeSession = activeSession,
+                            onEndAndStartNewSession = {
+                                coroutineScope.launch { sessionsManager.endAndStartNew() }
+                            },
+                        )
                     }
-                    HorizontalDivider(color = colors.border)
-                    StatusBar(
-                        devices = detectedDevices,
-                        activeDevice = activeDevice,
-                        onSelectDevice = { activeDevice = it },
-                        activeSession = activeSession,
-                        onEndAndStartNewSession = {
-                            coroutineScope.launch { sessionsManager.endAndStartNew() }
-                        },
-                    )
-                }
 
-                if (settingsOpen) {
-                    SettingsPanel(
-                        settings = settings,
-                        onSettingsChange = { updateSettings(it) },
-                        onDismiss = { settingsOpen = false },
-                    )
+                    if (settingsOpen) {
+                        SettingsPanel(
+                            settings = settings,
+                            onSettingsChange = { updateSettings(it) },
+                            onDismiss = { settingsOpen = false },
+                        )
+                    }
                 }
-            }
+            } // LocalDeviceColorMap
         }
     }
 }
 
 @Composable
-private fun TitleBar(settings: AppSettings, onOpenSettings: () -> Unit, onCycleTheme: () -> Unit) {
+private fun TitleBar(
+    settings: AppSettings,
+    onOpenSettings: () -> Unit,
+    onSelectTheme: (AppTheme) -> Unit,
+) {
     val colors = LocalLogHoundColors.current
-    // On macOS with fullWindowContent, leave space for the traffic lights (~80px wide, centred at
-    // ~y=14).
-    // We render our bar content at 38dp total; the traffic lights float over the left corner.
     val macTopPad = if (isMac) 6.dp else 0.dp
+    var themeMenuOpen by remember { mutableStateOf(false) }
 
     Box(modifier = Modifier.fillMaxWidth().height(TITLE_BAR_HEIGHT).background(colors.surface)) {
         // Centered logo + title
@@ -211,36 +226,109 @@ private fun TitleBar(settings: AppSettings, onOpenSettings: () -> Unit, onCycleT
             )
         }
 
-        // Right: theme toggle + settings gear
+        // Right: theme toggle popover + settings gear
         Row(
             modifier = Modifier.align(Alignment.CenterEnd).padding(end = 12.dp, top = macTopPad),
             horizontalArrangement = Arrangement.spacedBy(6.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Row(
-                modifier =
-                    Modifier.height(24.dp)
-                        .clip(RoundedCornerShape(6.dp))
-                        .background(colors.input)
-                        .clickable(onClick = onCycleTheme)
-                        .padding(horizontal = 9.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(5.dp),
-            ) {
-                Text("◑", style = LogHoundDesign.Text.Status.copy(color = colors.secondary))
-                Text(
-                    settings.theme.displayName,
-                    style =
-                        LogHoundDesign.Text.Status.copy(
-                            color = colors.onSurface,
-                            fontWeight = FontWeight.Medium,
-                        ),
-                )
-                Text(
-                    "▾",
-                    style =
-                        LogHoundDesign.Text.Status.copy(color = colors.secondary, fontSize = 9.sp),
-                )
+            Box {
+                Row(
+                    modifier =
+                        Modifier.height(24.dp)
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(colors.input)
+                            .clickable { themeMenuOpen = true }
+                            .padding(horizontal = 9.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(5.dp),
+                ) {
+                    Text("◑", style = LogHoundDesign.Text.Status.copy(color = colors.secondary))
+                    Text(
+                        settings.theme.displayName,
+                        style =
+                            LogHoundDesign.Text.Status.copy(
+                                color = colors.onSurface,
+                                fontWeight = FontWeight.Medium,
+                            ),
+                    )
+                    Text(
+                        "▾",
+                        style =
+                            LogHoundDesign.Text.Status.copy(
+                                color = colors.secondary,
+                                fontSize = 9.sp,
+                            ),
+                    )
+                }
+                DropdownMenu(
+                    expanded = themeMenuOpen,
+                    onDismissRequest = { themeMenuOpen = false },
+                ) {
+                    Text(
+                        "APPEARANCE",
+                        style =
+                            LogHoundDesign.Text.Status.copy(
+                                fontWeight = FontWeight.SemiBold,
+                                letterSpacing = 0.5.sp,
+                                color = colors.secondary,
+                            ),
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+                    )
+                    AppTheme.entries.forEach { theme ->
+                        val tc = theme.colors
+                        DropdownMenuItem(
+                            text = {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(11.dp),
+                                ) {
+                                    // 4 swatches: bg, surface, accent, error
+                                    Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+                                        listOf(
+                                                tc.background,
+                                                tc.surface,
+                                                tc.primary,
+                                                tc.priorityError,
+                                            )
+                                            .forEach { c ->
+                                                Box(
+                                                    modifier =
+                                                        Modifier.size(8.dp)
+                                                            .clip(CircleShape)
+                                                            .background(c)
+                                                )
+                                            }
+                                    }
+                                    Text(
+                                        theme.displayName,
+                                        style =
+                                            LogHoundDesign.Text.Tab.copy(
+                                                color = colors.onSurface,
+                                                fontWeight = FontWeight.Medium,
+                                                fontSize = 13.sp,
+                                            ),
+                                        modifier = Modifier.weight(1f),
+                                    )
+                                    if (settings.theme == theme) {
+                                        Text(
+                                            "✓",
+                                            style =
+                                                LogHoundDesign.Text.Status.copy(
+                                                    color = colors.primary,
+                                                    fontWeight = FontWeight.SemiBold,
+                                                ),
+                                        )
+                                    }
+                                }
+                            },
+                            onClick = {
+                                onSelectTheme(theme)
+                                themeMenuOpen = false
+                            },
+                        )
+                    }
+                }
             }
             Box(
                 modifier =

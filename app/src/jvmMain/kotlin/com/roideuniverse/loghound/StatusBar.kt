@@ -152,7 +152,7 @@ private fun DevicePill(
     Box {
         Row(
             modifier =
-                Modifier.height(20.dp)
+                Modifier.height(18.dp)
                     .clip(RoundedCornerShape(5.dp))
                     .background(colors.input)
                     .clickable { menuOpen = true }
@@ -260,7 +260,7 @@ private fun SessionPill(session: Session?, onEndAndStartNew: () -> Unit) {
     Box {
         Row(
             modifier =
-                Modifier.height(20.dp)
+                Modifier.height(18.dp)
                     .clip(RoundedCornerShape(5.dp))
                     .background(colors.input)
                     .clickable(enabled = session != null) { menuOpen = true }

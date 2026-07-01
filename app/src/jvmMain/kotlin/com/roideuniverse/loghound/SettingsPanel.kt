@@ -40,7 +40,9 @@ import com.roideuniverse.loghound.design.TimestampFormat
 
 private enum class SettingsCat(val label: String) {
     Appearance("Appearance"),
-    Display("Display"),
+    Display("Log Display"),
+    Backup("Backup & Restore"),
+    About("About"),
 }
 
 @Composable
@@ -123,12 +125,13 @@ fun SettingsPanel(
                                 ),
                             modifier =
                                 Modifier.fillMaxWidth()
-                                    .clip(RoundedCornerShape(6.dp))
+                                    .height(34.dp)
+                                    .clip(RoundedCornerShape(7.dp))
                                     .background(
                                         if (active) colors.pressedBackground else Color.Transparent
                                     )
                                     .clickable { category = cat }
-                                    .padding(horizontal = 10.dp, vertical = 6.dp),
+                                    .padding(horizontal = 12.dp),
                         )
                     }
                     Spacer(Modifier.weight(1f))
@@ -155,6 +158,8 @@ fun SettingsPanel(
                         when (category) {
                             SettingsCat.Appearance -> AppearanceDetail(settings, onSettingsChange)
                             SettingsCat.Display -> DisplayDetail(settings, onSettingsChange)
+                            SettingsCat.Backup -> BackupDetail(settings, onSettingsChange)
+                            SettingsCat.About -> AboutDetail()
                         }
                     }
                 }
@@ -437,4 +442,91 @@ private fun StepBtn(label: String, enabled: Boolean, onClick: () -> Unit) {
                 .then(if (enabled) Modifier.clickable(onClick = onClick) else Modifier)
                 .padding(horizontal = 10.dp, vertical = 4.dp),
     )
+}
+
+@Composable
+private fun BackupDetail(settings: AppSettings, onChange: (AppSettings) -> Unit) {
+    val colors = LocalLogHoundColors.current
+
+    SectionHeader("EXPORT")
+    Spacer(Modifier.height(8.dp))
+    Text(
+        "Copy your settings as JSON to share or back up.",
+        style = LogHoundDesign.Text.Status.copy(color = colors.secondary),
+    )
+    Spacer(Modifier.height(12.dp))
+    val json = remember(settings) { settingsToJson(settings) }
+    Box(
+        modifier =
+            Modifier.fillMaxWidth()
+                .clip(RoundedCornerShape(6.dp))
+                .background(colors.surface)
+                .border(1.dp, colors.border, RoundedCornerShape(6.dp))
+                .padding(12.dp)
+    ) {
+        Text(json, style = LogHoundDesign.Text.Row.copy(color = colors.onSurface, fontSize = 11.sp))
+    }
+    Spacer(Modifier.height(12.dp))
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        ActionButton("Copy JSON") {
+            // clipboard access would go here — UI-only stub
+        }
+        ActionButton("Reset to defaults") { onChange(AppSettings()) }
+    }
+}
+
+@Composable
+private fun AboutDetail() {
+    val colors = LocalLogHoundColors.current
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        SectionHeader("LOGHOUND")
+        Spacer(Modifier.height(4.dp))
+        Text(
+            "Version 1.0.0",
+            style =
+                LogHoundDesign.Text.Tab.copy(
+                    color = colors.onSurface,
+                    fontWeight = FontWeight.SemiBold,
+                ),
+        )
+        Text(
+            "A fast, memory-efficient Android logcat viewer built with Compose Multiplatform for Desktop.",
+            style = LogHoundDesign.Text.Field.copy(color = colors.text2),
+        )
+        Spacer(Modifier.height(8.dp))
+        Text(
+            "github.com/roideuniverse/LogHound",
+            style = LogHoundDesign.Text.Status.copy(color = colors.primary),
+        )
+    }
+}
+
+@Composable
+private fun ActionButton(label: String, onClick: () -> Unit) {
+    val colors = LocalLogHoundColors.current
+    Box(
+        modifier =
+            Modifier.clip(RoundedCornerShape(6.dp))
+                .border(1.dp, colors.border, RoundedCornerShape(6.dp))
+                .clickable(onClick = onClick)
+                .padding(horizontal = 14.dp, vertical = 7.dp)
+    ) {
+        Text(
+            label,
+            style = LogHoundDesign.Text.Tab.copy(color = colors.onSurface, fontSize = 12.sp),
+        )
+    }
+}
+
+private fun settingsToJson(settings: AppSettings): String = buildString {
+    appendLine("{")
+    appendLine("  \"theme\": \"${settings.theme.name}\",")
+    appendLine("  \"density\": \"${settings.density.name}\",")
+    appendLine("  \"fontSize\": ${settings.fontSize},")
+    appendLine("  \"showPid\": ${settings.showPid},")
+    appendLine("  \"zebraRows\": ${settings.zebraRows},")
+    appendLine("  \"wordWrap\": ${settings.wordWrap},")
+    append("  \"timestampFormat\": \"${settings.timestampFormat.name}\"")
+    appendLine()
+    append("}")
 }
