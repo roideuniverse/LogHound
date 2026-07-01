@@ -6,6 +6,8 @@ import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import com.roideuniverse.loghound.plugins.uuidgrouping.UuidGroupingPlugin
+import java.io.File
+import kotlin.test.assertEquals
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -16,8 +18,6 @@ import kotlinx.coroutines.yield
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
-import java.io.File
-import kotlin.test.assertEquals
 
 @OptIn(ExperimentalTestApi::class)
 class UuidGroupingE2eTest {
@@ -57,9 +57,7 @@ class UuidGroupingE2eTest {
             }
         }
 
-        compose.setContent {
-            plugin.content(Modifier.fillMaxSize())
-        }
+        compose.setContent { plugin.content(Modifier.fillMaxSize()) }
 
         // Wait until each UUID is realised in the LazyColumn's visible range.
         compose.waitUntil(timeoutMillis = 5_000) {

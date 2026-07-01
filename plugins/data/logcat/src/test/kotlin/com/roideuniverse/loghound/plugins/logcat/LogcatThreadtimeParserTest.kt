@@ -1,9 +1,9 @@
 package com.roideuniverse.loghound.plugins.logcat
 
 import com.roideuniverse.loghound.core.LogPriority
-import org.junit.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
+import org.junit.Test
 
 class LogcatThreadtimeParserTest {
 
@@ -21,15 +21,16 @@ class LogcatThreadtimeParserTest {
 
     @Test
     fun parses_each_priority_label() {
-        val cases = mapOf(
-            'V' to LogPriority.Verbose,
-            'D' to LogPriority.Debug,
-            'I' to LogPriority.Info,
-            'W' to LogPriority.Warn,
-            'E' to LogPriority.Error,
-            'F' to LogPriority.Fatal,
-            'S' to LogPriority.Silent,
-        )
+        val cases =
+            mapOf(
+                'V' to LogPriority.Verbose,
+                'D' to LogPriority.Debug,
+                'I' to LogPriority.Info,
+                'W' to LogPriority.Warn,
+                'E' to LogPriority.Error,
+                'F' to LogPriority.Fatal,
+                'S' to LogPriority.Silent,
+            )
         for ((label, expected) in cases) {
             val line = "01-15 12:34:56.789  1234  5678 $label Tag: msg"
             val entry = LogcatThreadtimeParser.parse(line)!!

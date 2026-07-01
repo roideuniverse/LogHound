@@ -22,8 +22,8 @@ class LogViewerE2eTest {
     private fun pad(i: Int): String = i.toString().padStart(3, '0')
 
     /**
-     * Pumps a frame, lets idle work settle, then yields real time so a LaunchedEffect that
-     * resumes after withContext(Dispatchers.IO) can post its state change back before we poll.
+     * Pumps a frame, lets idle work settle, then yields real time so a LaunchedEffect that resumes
+     * after withContext(Dispatchers.IO) can post its state change back before we poll.
      */
     private fun pumpUntil(timeoutMillis: Long = 5_000, condition: () -> Boolean) {
         val deadline = System.currentTimeMillis() + timeoutMillis
@@ -43,22 +43,22 @@ class LogViewerE2eTest {
             env.repository.append((1..5).map { makeEntry(message = "initial-${pad(it)}") })
         }
 
-        compose.setContent {
-            LogViewerPlugin(env.repository).content(Modifier.fillMaxSize())
-        }
+        compose.setContent { LogViewerPlugin(env.repository).content(Modifier.fillMaxSize()) }
         pumpUntil {
-            compose.onAllNodesWithText("initial-005", substring = true)
-                .fetchSemanticsNodes().isNotEmpty()
+            compose
+                .onAllNodesWithText("initial-005", substring = true)
+                .fetchSemanticsNodes()
+                .isNotEmpty()
         }
 
-        runBlocking {
-            env.repository.append(listOf(makeEntry(message = "live-arrival-XYZ")))
-        }
+        runBlocking { env.repository.append(listOf(makeEntry(message = "live-arrival-XYZ"))) }
 
         // Auto-scroll keeps us at bottom; "live-arrival-XYZ" must appear.
         pumpUntil {
-            compose.onAllNodesWithText("live-arrival-XYZ", substring = true)
-                .fetchSemanticsNodes().isNotEmpty()
+            compose
+                .onAllNodesWithText("live-arrival-XYZ", substring = true)
+                .fetchSemanticsNodes()
+                .isNotEmpty()
         }
         compose.onNodeWithText("live-arrival-XYZ", substring = true).assertExists()
     }

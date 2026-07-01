@@ -8,8 +8,8 @@ import com.roideuniverse.loghound.database.createLogDataStore
 import java.io.File
 
 /**
- * Builds the same object graph the running app builds: real `LogDataStore` over real
- * SQLite (in a temp dir) wrapped by `LogRepositoryImpl`. No fakes, no mocks.
+ * Builds the same object graph the running app builds: real `LogDataStore` over real SQLite (in a
+ * temp dir) wrapped by `LogRepositoryImpl`. No fakes, no mocks.
  */
 internal class E2eEnv(rootDir: File) {
     val logDbFile: File = File(rootDir, "logs.db")
@@ -27,13 +27,14 @@ internal fun makeEntry(
     tag: String = "T",
     message: String,
     packageName: String? = null,
-) = LogEntry(
-    id = 0L,
-    timestamp = timestamp,
-    pid = pid,
-    tid = tid,
-    priority = priority,
-    tag = tag,
-    message = message,
-    packageName = packageName,
-)
+) =
+    LogEntry(
+        id = 0L,
+        timestamp = timestamp,
+        pid = pid,
+        tid = tid,
+        priority = priority,
+        tag = tag,
+        message = message,
+        packageName = packageName,
+    )

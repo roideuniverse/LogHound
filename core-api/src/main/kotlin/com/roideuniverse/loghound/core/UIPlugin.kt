@@ -7,6 +7,5 @@ interface UIPlugin {
     val id: String
     val name: String
 
-    @Composable
-    fun content(modifier: Modifier)
+    @Composable fun content(modifier: Modifier)
 }

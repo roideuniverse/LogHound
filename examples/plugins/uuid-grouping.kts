@@ -1,6 +1,5 @@
-val UUID_REGEX = Regex(
-    """[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}""",
-)
+val UUID_REGEX =
+    Regex("""[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}""")
 
 plugin {
     id = "uuid-grouping-script"
@@ -45,27 +44,22 @@ plugin {
 
         coroutineScope {
             // Live ingest.
-            launch {
-                repo.ingested.collect { batch ->
-                    if (ingest(batch)) publish()
-                }
-            }
+            launch { repo.ingested.collect { batch -> if (ingest(batch)) publish() } }
 
             // When a detail tab opens, query for log lines containing that UUID.
             launch {
-                snapshotFlow { tabs.openTabs.value.map { it.id } }.collect { ids ->
-                    ids.forEach { id ->
-                        if (id !in detailEntries.value) {
-                            launch {
-                                val page = repo.query(
-                                    filter = LogFilter(textSearch = id),
-                                    limit = 500,
-                                )
-                                detailEntries.value = detailEntries.value + (id to page.entries)
+                snapshotFlow { tabs.openTabs.value.map { it.id } }
+                    .collect { ids ->
+                        ids.forEach { id ->
+                            if (id !in detailEntries.value) {
+                                launch {
+                                    val page =
+                                        repo.query(filter = LogFilter(textSearch = id), limit = 500)
+                                    detailEntries.value = detailEntries.value + (id to page.entries)
+                                }
                             }
                         }
                     }
-                }
             }
         }
     }
@@ -76,9 +70,7 @@ plugin {
             master = {
                 section {
                     row {
-                        weight(1f) {
-                            textField(state = filter, placeholder = "Search UUIDs\u2026")
-                        }
+                        weight(1f) { textField(state = filter, placeholder = "Search UUIDs\u2026") }
                         spacer(width = 8)
                         button(
                             label = if (sortByCount.value) "Sort: count ↓" else "Sort: A → Z",
@@ -87,8 +79,9 @@ plugin {
                     }
                     val visible = run {
                         val q = filter.value.lowercase()
-                        val filtered = if (q.isEmpty()) rows.value
-                                       else rows.value.filter { it.first.contains(q) }
+                        val filtered =
+                            if (q.isEmpty()) rows.value
+                            else rows.value.filter { it.first.contains(q) }
                         if (sortByCount.value) filtered.sortedByDescending { it.second }
                         else filtered.sortedBy { it.first }
                     }
@@ -97,10 +90,11 @@ plugin {
                 }
                 divider()
                 val q = filter.value.lowercase()
-                val filtered = if (q.isEmpty()) rows.value
-                               else rows.value.filter { it.first.contains(q) }
-                val visible = if (sortByCount.value) filtered.sortedByDescending { it.second }
-                              else filtered.sortedBy { it.first }
+                val filtered =
+                    if (q.isEmpty()) rows.value else rows.value.filter { it.first.contains(q) }
+                val visible =
+                    if (sortByCount.value) filtered.sortedByDescending { it.second }
+                    else filtered.sortedBy { it.first }
                 list(items = visible, key = { it.first }) { (uuid, count) ->
                     clickable(onClick = { tabs.open(id = uuid, name = uuid.take(8) + "…") }) {
                         row {
@@ -116,17 +110,17 @@ plugin {
                 if (entries == null) {
                     centered { loading() }
                 } else if (entries.isEmpty()) {
-                    centered {
-                        text("No log lines for this UUID")
-                    }
+                    centered { text("No log lines for this UUID") }
                 } else {
                     list(items = entries, key = { it.id }) { entry ->
-                        val weight = if (entry.priority == LogPriority.Fatal) FontWeight.Bold
-                                     else FontWeight.Normal
-                        val style = LogHoundDesign.Text.Row.copy(
-                            color = LogHoundDesign.colorFor(entry.priority),
-                            fontWeight = weight,
-                        )
+                        val weight =
+                            if (entry.priority == LogPriority.Fatal) FontWeight.Bold
+                            else FontWeight.Normal
+                        val style =
+                            LogHoundDesign.Text.Row.copy(
+                                color = LogHoundDesign.colorFor(entry.priority),
+                                fontWeight = weight,
+                            )
                         text(
                             "${entry.timestamp}  ${entry.pid} ${entry.tid} " +
                                 "${entry.priority.name.first()}  ${entry.tag}: ${entry.message}",

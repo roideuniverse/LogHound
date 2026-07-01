@@ -11,8 +11,7 @@ import com.roideuniverse.loghound.core.DataPlugin
 import com.roideuniverse.loghound.core.LogRepository
 import com.roideuniverse.loghound.core.UIPlugin
 
-@DslMarker
-annotation class PluginDslMarker
+@DslMarker annotation class PluginDslMarker
 
 fun plugin(block: PluginBuilder.() -> Unit): DslPlugin {
     val builder = PluginBuilder()
@@ -42,13 +41,12 @@ class PluginBuilder {
     }
 
     /**
-     * Called by the host after the main logs store is wiped (Clear logs or
-     * End-session). The block runs inside the same [DataScope] as `data { }`,
-     * so plugins can reach their own state (e.g. delete the per-plugin SQLite
-     * file the script opened) without having to re-derive paths.
+     * Called by the host after the main logs store is wiped (Clear logs or End-session). The block
+     * runs inside the same [DataScope] as `data { }`, so plugins can reach their own state (e.g.
+     * delete the per-plugin SQLite file the script opened) without having to re-derive paths.
      *
-     * Plugins without persistent state can omit this block — the default
-     * `DataPlugin.clearStore()` is a no-op.
+     * Plugins without persistent state can omit this block — the default `DataPlugin.clearStore()`
+     * is a no-op.
      */
     fun onClear(block: suspend DataScope.() -> Unit) {
         clearBlock = block
@@ -61,7 +59,8 @@ class PluginBuilder {
     }
 }
 
-class DslPlugin internal constructor(
+class DslPlugin
+internal constructor(
     override val id: String,
     override val name: String,
     private val theme: PluginTheme,

@@ -1,8 +1,8 @@
 package com.roideuniverse.loghound.core
 
-import org.junit.Test
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
+import org.junit.Test
 
 class LogFilterTest {
 
@@ -13,16 +13,17 @@ class LogFilterTest {
         tid: Int = 5678,
         message: String = "hello world",
         packageName: String? = "com.example.app",
-    ) = LogEntry(
-        id = 1L,
-        timestamp = "01-15 12:00:00.000",
-        pid = pid,
-        tid = tid,
-        priority = priority,
-        tag = tag,
-        message = message,
-        packageName = packageName,
-    )
+    ) =
+        LogEntry(
+            id = 1L,
+            timestamp = "01-15 12:00:00.000",
+            pid = pid,
+            tid = tid,
+            priority = priority,
+            tag = tag,
+            message = message,
+            packageName = packageName,
+        )
 
     @Test
     fun empty_filter_matches_everything() {
@@ -38,9 +39,15 @@ class LogFilterTest {
 
     @Test
     fun min_priority_includes_equal_and_higher() {
-        assertTrue(LogFilter(minPriority = LogPriority.Info).matches(entry(priority = LogPriority.Info)))
-        assertTrue(LogFilter(minPriority = LogPriority.Info).matches(entry(priority = LogPriority.Warn)))
-        assertFalse(LogFilter(minPriority = LogPriority.Info).matches(entry(priority = LogPriority.Debug)))
+        assertTrue(
+            LogFilter(minPriority = LogPriority.Info).matches(entry(priority = LogPriority.Info))
+        )
+        assertTrue(
+            LogFilter(minPriority = LogPriority.Info).matches(entry(priority = LogPriority.Warn))
+        )
+        assertFalse(
+            LogFilter(minPriority = LogPriority.Info).matches(entry(priority = LogPriority.Debug))
+        )
     }
 
     @Test
@@ -53,7 +60,9 @@ class LogFilterTest {
 
     @Test
     fun package_filter_requires_a_package_present() {
-        assertTrue(LogFilter(packageName = "example").matches(entry(packageName = "com.example.app")))
+        assertTrue(
+            LogFilter(packageName = "example").matches(entry(packageName = "com.example.app"))
+        )
         assertFalse(LogFilter(packageName = "example").matches(entry(packageName = null)))
     }
 
@@ -74,9 +83,13 @@ class LogFilterTest {
         val f = LogFilter(tag = "MyTag", minPriority = LogPriority.Warn, textSearch = "boom")
         assertTrue(f.matches(entry(tag = "MyTag", priority = LogPriority.Error, message = "boom!")))
         // tag mismatch
-        assertFalse(f.matches(entry(tag = "Other", priority = LogPriority.Error, message = "boom!")))
+        assertFalse(
+            f.matches(entry(tag = "Other", priority = LogPriority.Error, message = "boom!"))
+        )
         // priority too low
-        assertFalse(f.matches(entry(tag = "MyTag", priority = LogPriority.Debug, message = "boom!")))
+        assertFalse(
+            f.matches(entry(tag = "MyTag", priority = LogPriority.Debug, message = "boom!"))
+        )
         // message mismatch
         assertFalse(f.matches(entry(tag = "MyTag", priority = LogPriority.Error, message = "fizz")))
     }

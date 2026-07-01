@@ -3,9 +3,9 @@ package com.roideuniverse.loghound.plugindsl
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.sp
-import org.junit.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotEquals
+import org.junit.Test
 
 class ThemeBuilderTest {
 
@@ -44,9 +44,7 @@ class ThemeBuilderTest {
     @Test
     fun `theme builder applies single override on top of defaults`() {
         val builder = PluginBuilder()
-        builder.theme {
-            background = Color.Black
-        }
+        builder.theme { background = Color.Black }
         assertEquals(Color.Black, builder.theme.background)
         // Other fields untouched — Swiss defaults still apply.
         assertEquals(Color(0xFFE5E5E5), builder.theme.divider)

@@ -2,8 +2,8 @@ package com.roideuniverse.loghound.plugins.logviewer
 
 import com.roideuniverse.loghound.core.LogFilter
 import com.roideuniverse.loghound.core.LogPriority
-import org.junit.Test
 import kotlin.test.assertEquals
+import org.junit.Test
 
 class FilterQueryParserTest {
 
@@ -30,8 +30,14 @@ class FilterQueryParserTest {
 
     @Test
     fun parses_level_full_name_case_insensitive() {
-        assertEquals(LogFilter(minPriority = LogPriority.Error), FilterQueryParser.parse("level:Error"))
-        assertEquals(LogFilter(minPriority = LogPriority.Warn), FilterQueryParser.parse("level:warn"))
+        assertEquals(
+            LogFilter(minPriority = LogPriority.Error),
+            FilterQueryParser.parse("level:Error"),
+        )
+        assertEquals(
+            LogFilter(minPriority = LogPriority.Warn),
+            FilterQueryParser.parse("level:warn"),
+        )
     }
 
     @Test
@@ -42,7 +48,10 @@ class FilterQueryParserTest {
 
     @Test
     fun parses_package_clause() {
-        assertEquals(LogFilter(packageName = "com.example"), FilterQueryParser.parse("package:com.example"))
+        assertEquals(
+            LogFilter(packageName = "com.example"),
+            FilterQueryParser.parse("package:com.example"),
+        )
     }
 
     @Test
@@ -52,7 +61,10 @@ class FilterQueryParserTest {
 
     @Test
     fun multiple_bare_words_join_with_space() {
-        assertEquals(LogFilter(textSearch = "out of memory"), FilterQueryParser.parse("out of memory"))
+        assertEquals(
+            LogFilter(textSearch = "out of memory"),
+            FilterQueryParser.parse("out of memory"),
+        )
     }
 
     @Test

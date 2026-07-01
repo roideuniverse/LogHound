@@ -43,21 +43,22 @@ class ThemeBuilder internal constructor(base: PluginTheme) {
     var textFieldBackground: Color = base.textFieldBackground
     var placeholderColor: Color = base.placeholderColor
 
-    internal fun build(): PluginTheme = PluginTheme(
-        background = background,
-        divider = divider,
-        rowDivider = rowDivider,
-        tabStripBackground = tabStripBackground,
-        activeTabBackground = activeTabBackground,
-        toolbarBackground = toolbarBackground,
-        text = text,
-        rowText = rowText,
-        tabText = tabText,
-        closeText = closeText,
-        buttonText = buttonText,
-        textFieldText = textFieldText,
-        textFieldBorder = textFieldBorder,
-        textFieldBackground = textFieldBackground,
-        placeholderColor = placeholderColor,
-    )
+    internal fun build(): PluginTheme =
+        PluginTheme(
+            background = background,
+            divider = divider,
+            rowDivider = rowDivider,
+            tabStripBackground = tabStripBackground,
+            activeTabBackground = activeTabBackground,
+            toolbarBackground = toolbarBackground,
+            text = text,
+            rowText = rowText,
+            tabText = tabText,
+            closeText = closeText,
+            buttonText = buttonText,
+            textFieldText = textFieldText,
+            textFieldBorder = textFieldBorder,
+            textFieldBackground = textFieldBackground,
+            placeholderColor = placeholderColor,
+        )
 }

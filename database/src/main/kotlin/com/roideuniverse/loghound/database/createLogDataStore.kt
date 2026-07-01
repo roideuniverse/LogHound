@@ -10,10 +10,11 @@ fun createLogDataStore(databaseFile: File): LogDataStore {
     val isNew = !databaseFile.exists()
     if (isNew) databaseFile.parentFile?.mkdirs()
 
-    val driver = JdbcSqliteDriver(
-        url = "jdbc:sqlite:${databaseFile.absolutePath}",
-        properties = Properties(),
-    )
+    val driver =
+        JdbcSqliteDriver(
+            url = "jdbc:sqlite:${databaseFile.absolutePath}",
+            properties = Properties(),
+        )
     if (isNew) LogHoundDb.Schema.create(driver)
 
     driver.execute(null, "PRAGMA journal_mode = WAL;", 0)

@@ -1,9 +1,8 @@
 package com.roideuniverse.loghound.plugins.sessions
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -20,24 +19,24 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.roideuniverse.loghound.core.UIPlugin
+import com.roideuniverse.loghound.design.LocalLogHoundColors
 import com.roideuniverse.loghound.design.LogHoundDesign
 import dev.zacsweers.metro.Inject
-import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import kotlinx.coroutines.launch
 
 object SessionsTestTags {
     const val SIDEBAR = "sessions.sidebar"
@@ -47,19 +46,16 @@ object SessionsTestTags {
 }
 
 /**
- * Sidebar plugin for the Sessions feature. Renders the live session at the
- * top, then a list of archived sessions below.
+ * Sidebar plugin for the Sessions feature. Renders the live session at the top, then a list of
+ * archived sessions below.
  *
- * The actions (end + archive, rename) delegate to the injected
- * [SessionsManager]. This UI only triggers them and re-reads the resulting
- * StateFlows.
+ * The actions (end + archive, rename) delegate to the injected [SessionsManager]. This UI only
+ * triggers them and re-reads the resulting StateFlows.
  *
- * Archive sub-tabs (open an archived session in a read-only Log Viewer) are
- * deliberately out of scope here — see issue #21's follow-up tasks.
+ * Archive sub-tabs (open an archived session in a read-only Log Viewer) are deliberately out of
+ * scope here — see issue #21's follow-up tasks.
  */
-class SessionsPlugin @Inject constructor(
-    private val manager: SessionsManager,
-) : UIPlugin {
+class SessionsPlugin @Inject constructor(private val manager: SessionsManager) : UIPlugin {
     override val id: String = "core.sessions"
     override val name: String = "Sessions"
 
@@ -69,44 +65,56 @@ class SessionsPlugin @Inject constructor(
         val archived by manager.archived.collectAsState()
         val scope = rememberCoroutineScope()
 
-        Surface(modifier = modifier.fillMaxSize(), color = LogHoundDesign.Colors.Background) {
-            Column(modifier = Modifier.fillMaxSize().padding(16.dp).testTag(SessionsTestTags.SIDEBAR)) {
-                Text("Current session", style = LogHoundDesign.Text.Tab.copy(fontWeight = FontWeight.SemiBold))
+        val colors = LocalLogHoundColors.current
+        Surface(modifier = modifier.fillMaxSize(), color = colors.background) {
+            Column(
+                modifier = Modifier.fillMaxSize().padding(16.dp).testTag(SessionsTestTags.SIDEBAR)
+            ) {
+                Text(
+                    "Current session",
+                    style =
+                        LogHoundDesign.Text.Tab.copy(
+                            fontWeight = FontWeight.SemiBold,
+                            color = colors.onSurface,
+                        ),
+                )
                 Spacer(Modifier.height(8.dp))
                 if (active != null) {
                     CurrentSessionCard(
                         name = active!!.name,
                         startedAt = active!!.startedAt,
-                        onEndAndNew = {
-                            scope.launch { manager.endAndStartNew() }
-                        },
+                        onEndAndNew = { scope.launch { manager.endAndStartNew() } },
                     )
                 } else {
                     Text(
                         "No active session — initializing…",
-                        style = LogHoundDesign.Text.Status,
+                        style = LogHoundDesign.Text.Status.copy(color = colors.secondary),
                     )
                 }
 
                 Spacer(Modifier.height(24.dp))
-                HorizontalDivider(color = LogHoundDesign.Colors.Border)
+                HorizontalDivider(color = colors.border)
                 Spacer(Modifier.height(16.dp))
 
                 Text(
                     "Archived sessions (${archived.size})",
-                    style = LogHoundDesign.Text.Tab.copy(fontWeight = FontWeight.SemiBold),
+                    style =
+                        LogHoundDesign.Text.Tab.copy(
+                            fontWeight = FontWeight.SemiBold,
+                            color = colors.onSurface,
+                        ),
                 )
                 Spacer(Modifier.height(8.dp))
                 if (archived.isEmpty()) {
                     Text(
                         "No archives yet.",
-                        style = LogHoundDesign.Text.Status,
+                        style = LogHoundDesign.Text.Status.copy(color = colors.secondary),
                     )
                 } else {
                     LazyColumn(modifier = Modifier.fillMaxWidth()) {
                         items(archived, key = { it.id }) { session ->
                             ArchivedSessionRow(session)
-                            HorizontalDivider(color = LogHoundDesign.Colors.Border)
+                            HorizontalDivider(color = colors.border)
                         }
                     }
                 }
@@ -116,62 +124,123 @@ class SessionsPlugin @Inject constructor(
 }
 
 @Composable
-private fun CurrentSessionCard(
-    name: String,
-    startedAt: Long,
-    onEndAndNew: () -> Unit,
-) {
+private fun CurrentSessionCard(name: String, startedAt: Long, onEndAndNew: () -> Unit) {
+    val colors = LocalLogHoundColors.current
     Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(6.dp))
-            .background(LogHoundDesign.Colors.Surface)
-            .padding(12.dp),
+        modifier =
+            Modifier.fillMaxWidth()
+                .clip(RoundedCornerShape(6.dp))
+                .background(colors.surface)
+                .padding(12.dp)
     ) {
         Text(
             name,
-            style = LogHoundDesign.Text.Tab.copy(fontWeight = FontWeight.SemiBold),
+            style =
+                LogHoundDesign.Text.Tab.copy(
+                    fontWeight = FontWeight.SemiBold,
+                    color = colors.onSurface,
+                ),
             modifier = Modifier.testTag(SessionsTestTags.CURRENT_NAME),
         )
         Spacer(Modifier.height(2.dp))
         Text(
             "Started " + formatTimestamp(startedAt),
-            style = LogHoundDesign.Text.Status,
+            style = LogHoundDesign.Text.Status.copy(color = colors.secondary),
         )
         Spacer(Modifier.height(12.dp))
         Button(
             onClick = onEndAndNew,
-            colors = ButtonDefaults.buttonColors(
-                containerColor = LogHoundDesign.Colors.OnSurface,
-                contentColor = Color.White,
-            ),
+            colors =
+                ButtonDefaults.buttonColors(
+                    containerColor = colors.button,
+                    contentColor = colors.buttonText,
+                ),
             modifier = Modifier.testTag(SessionsTestTags.END_AND_NEW),
         ) {
-            Text("End & Start New Session", style = LogHoundDesign.Text.Button.copy(color = Color.White))
+            Text(
+                "End & Start New Session",
+                style = LogHoundDesign.Text.Button.copy(color = colors.buttonText),
+            )
         }
     }
 }
 
 @Composable
 private fun ArchivedSessionRow(session: Session) {
+    val colors = LocalLogHoundColors.current
+    val duration =
+        session.endedAt?.let { end ->
+            val mins = ((end - session.startedAt) / 60_000).toInt()
+            if (mins < 60) "${mins}m" else "${mins / 60}h ${mins % 60}m"
+        }
+    val dateRange =
+        if (session.endedAt != null)
+            "${formatTimestamp(session.startedAt)} → ${formatTimestamp(session.endedAt)}"
+        else formatTimestamp(session.startedAt)
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 8.dp)
-            .testTag(SessionsTestTags.ARCHIVED_ROW),
+        modifier =
+            Modifier.fillMaxWidth()
+                .padding(horizontal = 18.dp, vertical = 13.dp)
+                .testTag(SessionsTestTags.ARCHIVED_ROW),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween,
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         Column(modifier = Modifier.weight(1f)) {
-            Text(session.name, style = LogHoundDesign.Text.Tab)
-            Spacer(Modifier.height(2.dp))
             Text(
-                "${formatTimestamp(session.startedAt)} · ${session.lineCount} lines",
-                style = LogHoundDesign.Text.Status,
+                session.name,
+                style =
+                    LogHoundDesign.Text.Tab.copy(
+                        fontWeight = FontWeight.SemiBold,
+                        color = colors.onSurface,
+                        fontSize = 14.sp,
+                    ),
             )
+            Spacer(Modifier.height(3.dp))
+            Text(
+                if (duration != null) "$dateRange · $duration" else dateRange,
+                style = LogHoundDesign.Text.Status.copy(color = colors.secondary),
+            )
+        }
+        Text(
+            formatLineCount(session.lineCount),
+            style =
+                LogHoundDesign.Text.Row.copy(
+                    color = colors.onSurface,
+                    fontWeight = FontWeight.Medium,
+                    fontSize = 13.sp,
+                ),
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            ArchiveActionButton("Open", colors.primary, colors.accentSoft, colors.border)
+            ArchiveActionButton("Export", colors.secondary, colors.input, colors.border)
         }
     }
 }
+
+@Composable
+private fun ArchiveActionButton(
+    label: String,
+    textColor: androidx.compose.ui.graphics.Color,
+    bg: androidx.compose.ui.graphics.Color,
+    borderColor: androidx.compose.ui.graphics.Color,
+) {
+    Text(
+        label,
+        style = LogHoundDesign.Text.Status.copy(color = textColor, fontWeight = FontWeight.Medium),
+        modifier =
+            Modifier.clip(RoundedCornerShape(5.dp))
+                .background(bg)
+                .border(1.dp, borderColor, RoundedCornerShape(5.dp))
+                .padding(horizontal = 10.dp, vertical = 4.dp),
+    )
+}
+
+private fun formatLineCount(count: Long): String =
+    when {
+        count >= 1_000_000 -> "${count / 1_000_000}.${(count % 1_000_000) / 100_000}M"
+        count >= 1_000 -> "${count / 1_000}k"
+        else -> count.toString()
+    }
 
 private fun formatTimestamp(millis: Long): String {
     val fmt = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.US)

@@ -15,32 +15,34 @@ import androidx.compose.ui.unit.sp
 import com.roideuniverse.loghound.core.LogPriority
 
 /**
- * Swiss-spec priority pill. A 16dp square with 6dp corners, tinted
- * background per priority (`#FBEAEE` for Error, etc.), and the single-letter
- * priority label centered in the priority foreground color (`#E52E2E` for
- * Error, etc.).
+ * Swiss-spec priority pill. A 16dp square with 6dp corners, tinted background per priority
+ * (`#FBEAEE` for Error, etc.), and the single-letter priority label centered in the priority
+ * foreground color (`#E52E2E` for Error, etc.).
  *
- * The badge replaces row-wide priority tinting from the pre-Swiss design.
- * Body text stays near-black for prolonged reading; the badge carries the
- * priority signal in a peripheral-vision-friendly chip.
+ * The badge replaces row-wide priority tinting from the pre-Swiss design. Body text stays
+ * near-black for prolonged reading; the badge carries the priority signal in a
+ * peripheral-vision-friendly chip.
  */
 @Composable
 fun PriorityBadge(priority: LogPriority, modifier: Modifier = Modifier) {
+    val colors = LocalLogHoundColors.current
     Box(
-        modifier = modifier
-            .size(16.dp)
-            .clip(RoundedCornerShape(6.dp))
-            .background(LogHoundDesign.badgeBgFor(priority)),
+        modifier =
+            modifier
+                .size(16.dp)
+                .clip(RoundedCornerShape(6.dp))
+                .background(colors.badgeBgFor(priority)),
         contentAlignment = Alignment.Center,
     ) {
         BasicText(
             text = priority.label.toString(),
-            style = LogHoundDesign.Text.Row.copy(
-                color = LogHoundDesign.colorFor(priority),
-                fontSize = 10.sp,
-                fontWeight = FontWeight.Medium,
-                lineHeight = 10.sp,
-            ),
+            style =
+                LogHoundDesign.Text.Row.copy(
+                    color = colors.colorFor(priority),
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Medium,
+                    lineHeight = 10.sp,
+                ),
         )
     }
 }

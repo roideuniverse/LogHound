@@ -6,30 +6,34 @@ import androidx.compose.ui.text.TextStyle
 internal sealed interface Verb
 
 internal class ColumnVerb(val children: List<Verb>) : Verb
+
 internal class RowVerb(val children: List<Verb>) : Verb
+
 internal class SectionVerb(val children: List<Verb>) : Verb
+
 internal class CenteredVerb(val children: List<Verb>) : Verb
+
 internal class TextVerb(val value: String, val style: TextStyle?) : Verb
+
 internal class SpacerVerb(val widthDp: Int, val heightDp: Int) : Verb
+
 internal class DividerVerb : Verb
+
 internal class LoadingVerb : Verb
+
 internal class ButtonVerb(val label: String, val onClick: () -> Unit) : Verb
+
 internal class WeightVerb(val weight: Float, val children: List<Verb>) : Verb
+
 internal class ListVerb<T>(
     val items: List<T>,
     val key: (T) -> Any,
     val itemContent: (T) -> List<Verb>,
 ) : Verb
 
-internal class TextFieldVerb(
-    val state: MutableState<String>,
-    val placeholder: String,
-) : Verb
+internal class TextFieldVerb(val state: MutableState<String>, val placeholder: String) : Verb
 
-internal class ClickableVerb(
-    val onClick: () -> Unit,
-    val children: List<Verb>,
-) : Verb
+internal class ClickableVerb(val onClick: () -> Unit, val children: List<Verb>) : Verb
 
 internal class TabsVerb(
     val controller: TabController,
@@ -91,11 +95,7 @@ class UiScope internal constructor() {
         verbs.add(WeightVerb(weight, child.verbs.toList()))
     }
 
-    fun <T> list(
-        items: List<T>,
-        key: (T) -> Any,
-        itemContent: UiScope.(T) -> Unit,
-    ) {
+    fun <T> list(items: List<T>, key: (T) -> Any, itemContent: UiScope.(T) -> Unit) {
         verbs.add(
             ListVerb(items, key) { item ->
                 val child = UiScope()

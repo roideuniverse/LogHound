@@ -26,7 +26,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.AnnotatedString
@@ -34,10 +33,10 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.roideuniverse.loghound.design.LogHoundDesign
+import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.io.File
 
 internal data class PackageInfo(val packageName: String, val uid: Int)
 
@@ -120,12 +119,13 @@ private fun LookupInput(
         onValueChange = onChange,
         singleLine = true,
         textStyle = style,
-        modifier = modifier
-            .clip(shape)
-            .background(LogHoundDesign.Colors.TextFieldBackground)
-            .border(1.dp, LogHoundDesign.Colors.TextFieldBorder, shape)
-            .padding(horizontal = 8.dp, vertical = 6.dp)
-            .testTag(TestTags.PACKAGE_LOOKUP_INPUT),
+        modifier =
+            modifier
+                .clip(shape)
+                .background(LogHoundDesign.Colors.TextFieldBackground)
+                .border(1.dp, LogHoundDesign.Colors.TextFieldBorder, shape)
+                .padding(horizontal = 8.dp, vertical = 6.dp)
+                .testTag(TestTags.PACKAGE_LOOKUP_INPUT),
         decorationBox = { inner ->
             Box {
                 if (value.isEmpty()) {
@@ -144,10 +144,10 @@ private fun LookupInput(
 @Composable
 private fun ResultRow(row: PackageInfo, copy: (AnnotatedString) -> Unit) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 2.dp)
-            .testTag(TestTags.PACKAGE_LOOKUP_RESULT_ROW),
+        modifier =
+            Modifier.fillMaxWidth()
+                .padding(vertical = 2.dp)
+                .testTag(TestTags.PACKAGE_LOOKUP_RESULT_ROW),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
@@ -178,44 +178,44 @@ private fun ResultRow(row: PackageInfo, copy: (AnnotatedString) -> Unit) {
 }
 
 @Composable
-private fun CopyAction(
-    label: String,
-    value: String,
-    tag: String,
-    copy: (AnnotatedString) -> Unit,
-) {
+private fun CopyAction(label: String, value: String, tag: String, copy: (AnnotatedString) -> Unit) {
     Text(
         text = label,
         style = TextStyle(fontSize = 12.sp, color = LogHoundDesign.Colors.Primary),
-        modifier = Modifier
-            .clickable { copy(AnnotatedString(value)) }
-            .testTag(tag)
-            .padding(horizontal = 4.dp),
+        modifier =
+            Modifier.clickable { copy(AnnotatedString(value)) }
+                .testTag(tag)
+                .padding(horizontal = 4.dp),
     )
 }
 
 internal sealed class LookupOutcome {
     data class Success(val packages: List<PackageInfo>) : LookupOutcome()
+
     data object NoAdb : LookupOutcome()
+
     data object NoDevice : LookupOutcome()
 }
 
 private val PACKAGE_LINE_REGEX = Regex("""^package:(\S+)\s+uid:(\d+)$""")
 
-internal suspend fun lookupPackageUids(query: String): LookupOutcome = withContext(Dispatchers.IO) {
-    val adb = findAdbExecutable() ?: return@withContext LookupOutcome.NoAdb
-    if (!hasAnyDevice(adb)) return@withContext LookupOutcome.NoDevice
-    val proc = ProcessBuilder(adb, "shell", "pm", "list", "packages", "-U", query)
-        .redirectErrorStream(true)
-        .start()
-    val out = proc.inputStream.bufferedReader().readText()
-    proc.waitFor()
-    val packages = parsePackageUidLines(out)
-    LookupOutcome.Success(packages)
-}
+internal suspend fun lookupPackageUids(query: String): LookupOutcome =
+    withContext(Dispatchers.IO) {
+        val adb = findAdbExecutable() ?: return@withContext LookupOutcome.NoAdb
+        if (!hasAnyDevice(adb)) return@withContext LookupOutcome.NoDevice
+        val proc =
+            ProcessBuilder(adb, "shell", "pm", "list", "packages", "-U", query)
+                .redirectErrorStream(true)
+                .start()
+        val out = proc.inputStream.bufferedReader().readText()
+        proc.waitFor()
+        val packages = parsePackageUidLines(out)
+        LookupOutcome.Success(packages)
+    }
 
 internal fun parsePackageUidLines(output: String): List<PackageInfo> {
-    return output.lineSequence()
+    return output
+        .lineSequence()
         .mapNotNull { line ->
             val m = PACKAGE_LINE_REGEX.matchEntire(line.trim()) ?: return@mapNotNull null
             val uid = m.groupValues[2].toIntOrNull() ?: return@mapNotNull null
@@ -243,10 +243,7 @@ private fun findAdbExecutable(): String? {
         val adb = File(sdkRoot, "platform-tools/adb")
         if (adb.canExecute()) return adb.absolutePath
     }
-    val macDefault = File(
-        System.getProperty("user.home"),
-        "Library/Android/sdk/platform-tools/adb",
-    )
+    val macDefault = File(System.getProperty("user.home"), "Library/Android/sdk/platform-tools/adb")
     if (macDefault.canExecute()) return macDefault.absolutePath
     return "adb"
 }

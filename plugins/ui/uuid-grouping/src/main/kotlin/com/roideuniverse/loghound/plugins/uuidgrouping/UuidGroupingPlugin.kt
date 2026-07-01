@@ -45,19 +45,21 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.roideuniverse.loghound.core.DataPlugin
 import com.roideuniverse.loghound.core.LogEntry
 import com.roideuniverse.loghound.core.LogRepository
 import com.roideuniverse.loghound.core.UIPlugin
+import com.roideuniverse.loghound.design.LocalLogHoundColors
 import com.roideuniverse.loghound.design.LogHoundDesign
 import com.roideuniverse.loghound.design.PriorityBadge
-import androidx.compose.ui.text.style.TextOverflow
 import com.roideuniverse.loghound.plugins.uuidgrouping.internal.UuidDetailController
 import com.roideuniverse.loghound.plugins.uuidgrouping.internal.openUuidGroupingDb
 import com.roideuniverse.loghound.plugins.uuidgrouping.sqldelight.UuidGroupingDb
 import com.roideuniverse.loghound.plugins.uuidgrouping.sqldelight.Uuids
+import java.io.File
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -66,12 +68,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.withContext
-import java.io.File
 
-class UuidGroupingPlugin(
-    private val databaseFile: File,
-    private val repository: LogRepository,
-) : UIPlugin, DataPlugin {
+class UuidGroupingPlugin(private val databaseFile: File, private val repository: LogRepository) :
+    UIPlugin, DataPlugin {
 
     override val id: String = "core.uuid-grouping"
     override val name: String = "UUID Grouping"
@@ -115,7 +114,12 @@ class UuidGroupingPlugin(
 
             scannedThisRun += page.entries.size
             val totalUuids = q.countAll().executeAsOne()
-            _progress.value = BackfillProgress(scanning = page.hasMore, scanned = scannedThisRun, uuidCount = totalUuids)
+            _progress.value =
+                BackfillProgress(
+                    scanning = page.hasMore,
+                    scanned = scannedThisRun,
+                    uuidCount = totalUuids,
+                )
 
             if (!page.hasMore) break
             cursor = maxId
@@ -124,10 +128,9 @@ class UuidGroupingPlugin(
     }
 
     /**
-     * Drop every derived row + reset the backfill checkpoint. Called by the
-     * host after the main logs DB has been wiped (Clear logs / End session).
-     * After this returns, the next `run()` re-backfills from id 0 on the
-     * fresh logs DB.
+     * Drop every derived row + reset the backfill checkpoint. Called by the host after the main
+     * logs DB has been wiped (Clear logs / End session). After this returns, the next `run()`
+     * re-backfills from id 0 on the fresh logs DB.
      */
     override suspend fun clearStore() {
         val q = db.uuidsQueries
@@ -202,16 +205,20 @@ class UuidGroupingPlugin(
             while (true) {
                 val q = db.uuidsQueries
                 val pattern = search.lowercase()
-                rows = if (sortByCount) {
-                    q.selectByCountDesc(search = pattern, lim = VISIBLE_LIMIT.toLong(), off = 0).executeAsList()
-                } else {
-                    q.selectByUuidAsc(search = pattern, lim = VISIBLE_LIMIT.toLong(), off = 0).executeAsList()
-                }
+                rows =
+                    if (sortByCount) {
+                        q.selectByCountDesc(search = pattern, lim = VISIBLE_LIMIT.toLong(), off = 0)
+                            .executeAsList()
+                    } else {
+                        q.selectByUuidAsc(search = pattern, lim = VISIBLE_LIMIT.toLong(), off = 0)
+                            .executeAsList()
+                    }
                 totalMatching = q.countMatching(search = pattern).executeAsOne()
                 delay(REFRESH_INTERVAL_MS)
             }
         }
 
+        val colors = LocalLogHoundColors.current
         Column(modifier = modifier.fillMaxSize()) {
             UuidTabStrip(
                 openedUuids = openedUuids,
@@ -220,7 +227,7 @@ class UuidGroupingPlugin(
                 onSelectUuid = { activeUuid = it },
                 onClose = ::closeDetail,
             )
-            HorizontalDivider(color = LogHoundDesign.Colors.Border)
+            HorizontalDivider(color = colors.border)
             if (activeUuid == null) {
                 Toolbar(
                     search = search,
@@ -231,7 +238,7 @@ class UuidGroupingPlugin(
                     visibleCount = rows.size,
                     totalCount = totalMatching,
                 )
-                HorizontalDivider(color = LogHoundDesign.Colors.Border)
+                HorizontalDivider(color = colors.border)
                 UuidList(rows = rows, onUuidClick = ::openDetail)
             } else {
                 val controller = controllers[activeUuid]
@@ -264,7 +271,8 @@ private fun UuidTabStrip(
     onSelectUuid: (String) -> Unit,
     onClose: (String) -> Unit,
 ) {
-    Surface(modifier = Modifier.fillMaxWidth(), color = LogHoundDesign.Colors.Surface) {
+    val colors = LocalLogHoundColors.current
+    Surface(modifier = Modifier.fillMaxWidth(), color = colors.surface) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 2.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -294,29 +302,25 @@ private fun TabButton(
     onClick: () -> Unit,
     onClose: (() -> Unit)?,
 ) {
-    val bg = if (selected) LogHoundDesign.Colors.ActiveTabBackground else Color.Transparent
+    val colors = LocalLogHoundColors.current
+    val bg = if (selected) colors.background else Color.Transparent
     Row(
-        modifier = Modifier
-            .padding(horizontal = 2.dp)
-            .clip(RoundedCornerShape(4.dp))
-            .background(bg)
-            .clickable { onClick() }
-            .padding(horizontal = 10.dp, vertical = 4.dp)
-            .testTag(UuidTestTags.UUID_TAB),
+        modifier =
+            Modifier.padding(horizontal = 2.dp)
+                .clip(RoundedCornerShape(4.dp))
+                .background(bg)
+                .clickable { onClick() }
+                .padding(horizontal = 10.dp, vertical = 4.dp)
+                .testTag(UuidTestTags.UUID_TAB),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(
-            text = text,
-            style = LogHoundDesign.Text.Tab,
-        )
+        Text(text = text, style = LogHoundDesign.Text.Tab.copy(color = colors.onSurface))
         if (onClose != null) {
             Spacer(Modifier.width(6.dp))
             Text(
                 "✕",
-                style = LogHoundDesign.Text.TabClose,
-                modifier = Modifier
-                    .clickable { onClose() }
-                    .testTag(UuidTestTags.UUID_TAB_CLOSE),
+                style = LogHoundDesign.Text.TabClose.copy(color = colors.secondary),
+                modifier = Modifier.clickable { onClose() }.testTag(UuidTestTags.UUID_TAB_CLOSE),
             )
         }
     }
@@ -332,13 +336,17 @@ private fun Toolbar(
     visibleCount: Int,
     totalCount: Long,
 ) {
-    Surface(modifier = Modifier.fillMaxWidth(), color = LogHoundDesign.Colors.Surface) {
+    val colors = LocalLogHoundColors.current
+    Surface(modifier = Modifier.fillMaxWidth(), color = colors.surface) {
         Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 6.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 SearchField(search, onSearchChange, modifier = Modifier.weight(1f))
                 Spacer(Modifier.width(8.dp))
                 TextButton(onClick = onToggleSort) {
-                    Text(if (sortByCount) "Sort: count ↓" else "Sort: A → Z")
+                    Text(
+                        if (sortByCount) "Sort: count ↓" else "Sort: A → Z",
+                        color = colors.primary,
+                    )
                 }
             }
             Spacer(Modifier.padding(2.dp))
@@ -346,29 +354,32 @@ private fun Toolbar(
                 append("$visibleCount of $totalCount UUIDs")
                 if (progress.scanning) append("  •  scanning… ${progress.scanned}")
             }
-            Text(statusLabel, style = LogHoundDesign.Text.Status)
+            Text(statusLabel, style = LogHoundDesign.Text.Status.copy(color = colors.secondary))
         }
     }
 }
 
 @Composable
 private fun SearchField(value: String, onChange: (String) -> Unit, modifier: Modifier = Modifier) {
+    val colors = LocalLogHoundColors.current
     val shape = RoundedCornerShape(4.dp)
-    val style: TextStyle = LocalTextStyle.current.merge(LogHoundDesign.Text.Field)
+    val style: TextStyle =
+        LocalTextStyle.current.merge(LogHoundDesign.Text.Field.copy(color = colors.onSurface))
     BasicTextField(
         value = value,
         onValueChange = onChange,
         singleLine = true,
         textStyle = style,
-        modifier = modifier
-            .clip(shape)
-            .background(LogHoundDesign.Colors.TextFieldBackground)
-            .border(1.dp, LogHoundDesign.Colors.TextFieldBorder, shape)
-            .padding(horizontal = 8.dp, vertical = 6.dp),
+        modifier =
+            modifier
+                .clip(shape)
+                .background(colors.input)
+                .border(1.dp, colors.border, shape)
+                .padding(horizontal = 8.dp, vertical = 6.dp),
         decorationBox = { inner ->
             Box {
                 if (value.isEmpty()) {
-                    Text("Search UUIDs…", color = LogHoundDesign.Colors.Placeholder, style = style)
+                    Text("Search UUIDs…", color = colors.secondary, style = style)
                 }
                 inner()
             }
@@ -405,7 +416,7 @@ private fun DetailEmpty() {
     ) {
         Text(
             text = "No log lines for this UUID",
-            color = LogHoundDesign.Colors.PrioritySilent,
+            color = LocalLogHoundColors.current.secondary,
             style = TextStyle(fontSize = 13.sp),
         )
     }
@@ -418,10 +429,11 @@ private fun DetailList(controller: UuidDetailController) {
         snapshotFlow { controller.listState.firstVisibleItemIndex }
             .distinctUntilChanged()
             .collect { firstVisible ->
-                if (firstVisible <= LOAD_OLDER_THRESHOLD &&
-                    !controller.loadingOlder &&
-                    !controller.olderExhausted &&
-                    controller.entries.isNotEmpty()
+                if (
+                    firstVisible <= LOAD_OLDER_THRESHOLD &&
+                        !controller.loadingOlder &&
+                        !controller.olderExhausted &&
+                        controller.entries.isNotEmpty()
                 ) {
                     controller.loadOlder()
                 }
@@ -435,7 +447,9 @@ private fun DetailList(controller: UuidDetailController) {
                 modifier = Modifier.fillMaxSize().testTag(UuidTestTags.UUID_DETAIL_LIST),
             ) {
                 if (controller.loadingOlder) {
-                    item(key = "loadingOlder") { LoadingOlderRow(UuidTestTags.UUID_DETAIL_LOADING_OLDER) }
+                    item(key = "loadingOlder") {
+                        LoadingOlderRow(UuidTestTags.UUID_DETAIL_LOADING_OLDER)
+                    }
                 }
                 items(items = controller.entries, key = { it.id }) { entry -> DetailLogRow(entry) }
             }
@@ -456,7 +470,11 @@ private fun LoadingOlderRow(testTag: String) {
     ) {
         CircularProgressIndicator(strokeWidth = 2.dp, modifier = Modifier.width(14.dp))
         Spacer(Modifier.width(8.dp))
-        Text("Loading older…", color = LogHoundDesign.Colors.Secondary, style = TextStyle(fontSize = 12.sp))
+        Text(
+            "Loading older…",
+            color = LocalLogHoundColors.current.secondary,
+            style = TextStyle(fontSize = 12.sp),
+        )
     }
 }
 
@@ -472,25 +490,30 @@ private fun UuidList(rows: List<Uuids>, onUuidClick: (String) -> Unit) {
                 modifier = Modifier.fillMaxSize().testTag(UuidTestTags.UUID_LIST),
             ) {
                 items(items = rows, key = { it.uuid }) { row ->
+                    val colors = LocalLogHoundColors.current
                     Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { onUuidClick(row.uuid) }
-                            .padding(horizontal = 8.dp, vertical = 4.dp)
-                            .testTag(UuidTestTags.UUID_ROW),
+                        modifier =
+                            Modifier.fillMaxWidth()
+                                .clickable { onUuidClick(row.uuid) }
+                                .padding(horizontal = 8.dp, vertical = 4.dp)
+                                .testTag(UuidTestTags.UUID_ROW),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Text(
                             text = row.count.toString().padStart(7),
-                            style = LogHoundDesign.Text.Row.copy(fontWeight = FontWeight.Medium),
+                            style =
+                                LogHoundDesign.Text.Row.copy(
+                                    fontWeight = FontWeight.Medium,
+                                    color = colors.onSurface,
+                                ),
                         )
                         Spacer(Modifier.width(12.dp))
                         Text(
                             text = row.uuid,
-                            style = LogHoundDesign.Text.Row,
+                            style = LogHoundDesign.Text.Row.copy(color = colors.onSurface),
                         )
                     }
-                    HorizontalDivider(color = LogHoundDesign.Colors.Border)
+                    HorizontalDivider(color = colors.border)
                 }
             }
         }
@@ -503,24 +526,27 @@ private fun UuidList(rows: List<Uuids>, onUuidClick: (String) -> Unit) {
 
 @Composable
 private fun DetailLogRow(entry: LogEntry) {
-    val bodyStyle = LogHoundDesign.Text.Row
-    val metaStyle = LogHoundDesign.Text.Row.copy(
-        fontSize = 11.sp,
-        color = LogHoundDesign.Colors.Secondary,
-    )
-    val tagStyle = LogHoundDesign.Text.Row.copy(fontWeight = FontWeight.Medium)
+    val colors = LocalLogHoundColors.current
+    val bodyStyle = LogHoundDesign.Text.Row.copy(color = colors.onSurface)
+    val metaStyle = LogHoundDesign.Text.Row.copy(fontSize = 11.sp, color = colors.secondary)
+    val tagStyle =
+        LogHoundDesign.Text.Row.copy(fontWeight = FontWeight.Medium, color = colors.onSurface)
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 8.dp, vertical = 2.dp)
-            .testTag(UuidTestTags.UUID_DETAIL_ROW),
+        modifier =
+            Modifier.fillMaxWidth()
+                .padding(horizontal = 8.dp, vertical = 2.dp)
+                .testTag(UuidTestTags.UUID_DETAIL_ROW),
         verticalAlignment = Alignment.Top,
     ) {
         PriorityBadge(entry.priority, modifier = Modifier.padding(top = 1.dp))
         Spacer(Modifier.width(8.dp))
         Text(entry.timestamp, style = bodyStyle)
         Spacer(Modifier.width(8.dp))
-        Text("${entry.pid} ${entry.tid}", style = metaStyle, modifier = Modifier.padding(top = 1.dp))
+        Text(
+            "${entry.pid} ${entry.tid}",
+            style = metaStyle,
+            modifier = Modifier.padding(top = 1.dp),
+        )
         Spacer(Modifier.width(12.dp))
         Text(
             entry.tag,
@@ -533,4 +559,3 @@ private fun DetailLogRow(entry: LogEntry) {
         Text(entry.message, style = bodyStyle, modifier = Modifier.weight(1f))
     }
 }
-

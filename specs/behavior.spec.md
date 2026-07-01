@@ -39,9 +39,11 @@ The main log view shows a scrollable list of log entries. Each entry displays: t
 - The same load-older-on-scroll behavior applies to UUID detail sub-tabs.
 
 **Display options:**
-- Log lines are color-coded by priority level: Verbose=gray, Debug=blue, Info=green, Warning=amber, Error=red, Fatal=red bold
-- A toggle switches between single-line (truncated) and multi-line (wrapped) display
-- Timestamps can be displayed as absolute (12:01:03.445) or relative (+2.3s from previous line)
+- Log lines are color-coded by priority level: Verbose=gray, Debug=blue, Info=green, Warning=amber, Error=red, Fatal=red bold. Colors adapt to the active theme (see Appearance settings).
+- Word wrap is toggleable; off truncates each line with an ellipsis, on wraps to the available width.
+- Timestamps can be displayed as Full (`14:32:07.103`), Short (minutes+seconds+ms), or Seconds-only.
+- Rows optionally show PID/TID; the column can be hidden to reclaim horizontal space.
+- Search matches within a log message are highlighted with a distinct background and foreground color defined by the active theme (`hlBg` / `hlFg` tokens).
 
 **Performance:**
 - Scrolling remains smooth (60fps) even with millions of log lines.
@@ -177,6 +179,43 @@ The bottom of the window shows:
 - Total number of log lines ingested
 - Number of lines matching current filter (if filtering is active)
 - Ingestion status (e.g., "Streaming...", "Ingesting...", "Complete", "Disconnected")
+
+---
+
+## Appearance settings
+
+The app exposes a settings panel (gear icon in the title bar) with two main
+categories: **Appearance** and **Display**. A third **Import / Export** tab
+lets the user round-trip their configuration as JSON.
+
+### Appearance
+
+- **Theme** — selectable from four options: Light (default), Darcula, Nord,
+  High Contrast. Switching applies immediately to the entire app. The full
+  token set for each theme is defined in
+  [`specs/design/swiss-direction.md`](design/swiss-direction.md) → Claude
+  Design Revision.
+- **Accent color** — optional per-user override on top of the theme default.
+  Overrides the `primary` / `accent` token only.
+
+### Display
+
+| Option | Values | Default |
+|---|---|---|
+| Density | Compact / Comfortable | Compact |
+| Font size | 10 – 18 px | 12 px |
+| Show PID/TID | on / off | on |
+| Zebra rows | on / off | off |
+| Word wrap | on / off | on |
+| Timestamp format | Full / Short / Seconds | Full |
+
+Changes apply live — no restart, no "Apply" button.
+
+### Persistence
+
+Settings are stored in `~/.loghound/config.properties`. Unknown keys are
+preserved on write so settings files survive downgrades. Defaults are applied
+on first launch if no settings file exists.
 
 ---
 

@@ -9,9 +9,9 @@ data class LogFilter(
     val regexSearch: String? = null,
     val packageName: String? = null,
     /**
-     * Substring (case-insensitive) match against the entry's device id or
-     * label. Matches the `device:<name-or-prefix>` clause from the filter
-     * bar; composes AND with every other clause. Null means "any device."
+     * Substring (case-insensitive) match against the entry's device id or label. Matches the
+     * `device:<name-or-prefix>` clause from the filter bar; composes AND with every other clause.
+     * Null means "any device."
      */
     val deviceId: String? = null,
 ) {
@@ -24,9 +24,11 @@ data class LogFilter(
             val pkg = entry.packageName ?: return false
             if (!pkg.contains(packageName, ignoreCase = true)) return false
         }
-        if (textSearch != null && !entry.message.contains(textSearch, ignoreCase = true)) return false
+        if (textSearch != null && !entry.message.contains(textSearch, ignoreCase = true))
+            return false
         if (regexSearch != null && !Regex(regexSearch).containsMatchIn(entry.message)) return false
-        if (deviceId != null && !entry.deviceId.value.contains(deviceId, ignoreCase = true)) return false
+        if (deviceId != null && !entry.deviceId.value.contains(deviceId, ignoreCase = true))
+            return false
         return true
     }
 }
